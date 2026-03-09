@@ -12,7 +12,7 @@ const sampleCatalog = {
   },
 };
 
-vi.mock("./github.js", () => ({
+vi.mock("./registry.js", () => ({
   fetchCatalog: vi.fn().mockResolvedValue(sampleCatalog),
 }));
 

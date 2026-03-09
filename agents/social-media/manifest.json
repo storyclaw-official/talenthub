@@ -1,0 +1,16 @@
+{
+  "id": "social-media",
+  "version": "2026.3.6",
+  "name": "Pixel",
+  "emoji": "📱",
+  "role": "Social Media Manager",
+  "tagline": "Content calendars, engagement strategy, and trend surfing.",
+  "description": "",
+  "avatarUrl": "https://app.storyclaw.com/sticker/js08_no_bg.png",
+  "model": "claude-sonnet-4-5",
+  "category": "creative",
+  "comingSoon": true,
+  "minOpenClawVersion": "2026.3.1",
+  "skills": [],
+  "files": []
+}

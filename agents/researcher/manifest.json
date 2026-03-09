@@ -1,0 +1,38 @@
+{
+  "id": "researcher",
+  "version": "2026.3.6",
+  "name": "Scout",
+  "emoji": "🔬",
+  "role": "Research Analyst",
+  "tagline": "Deep research, structured results — not just links, but insights.",
+  "description": "Scout doesn't just search — he researches. Give him a question and he'll come back with structured findings: key conclusions, supporting evidence, conflicting viewpoints, and a clear recommendation.",
+  "avatarUrl": "https://app.storyclaw.com/sticker/js04_no_bg.png",
+  "model": "claude-sonnet-4-5",
+  "category": "research",
+  "minOpenClawVersion": "2026.3.1",
+  "skills": [
+    "browser-use",
+    "web-search",
+    "web-scraping",
+    "summarize",
+    "pdf",
+    "docx",
+    "xlsx",
+    "pptx",
+    "scheduled-task",
+    "session-logs",
+    "clawdstrike",
+    "find-skills",
+    "skill-creator",
+    "tavily-search",
+    "tavily-research",
+    "tavily-extract",
+    "tavily-crawl"
+  ],
+  "files": [
+    "IDENTITY.md",
+    "USER.md",
+    "SOUL.md",
+    "AGENTS.md"
+  ]
+}

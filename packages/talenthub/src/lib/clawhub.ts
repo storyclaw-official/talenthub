@@ -20,6 +20,10 @@ export function ensureClawhub(): void {
   }
 }
 
+export function isClawhubAvailable(): boolean {
+  return hasClawhub();
+}
+
 export function installSkill(slug: string, workdir: string): boolean {
   try {
     execSync(`clawhub install ${slug} --workdir "${workdir}" --no-input`, {

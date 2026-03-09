@@ -1,0 +1,38 @@
+{
+  "id": "content-writer",
+  "version": "2026.3.6",
+  "name": "Quill",
+  "emoji": "✍️",
+  "role": "Content Writer",
+  "tagline": "Words that work — from blog posts to ad copy, always on brand.",
+  "description": "Quill writes content that sounds like you, not like a robot. Blog posts, ad copy, social media, newsletters, landing pages — he adapts to your brand voice and audience.",
+  "avatarUrl": "https://app.storyclaw.com/sticker/js07_no_bg.png",
+  "model": "claude-sonnet-4-5",
+  "category": "creative",
+  "minOpenClawVersion": "2026.3.1",
+  "skills": [
+    "browser-use",
+    "web-search",
+    "web-scraping",
+    "summarize",
+    "pdf",
+    "docx",
+    "pptx",
+    "imap-smtp-email",
+    "scheduled-task",
+    "session-logs",
+    "clawdstrike",
+    "find-skills",
+    "skill-creator",
+    "tavily-search",
+    "tavily-research",
+    "tavily-extract",
+    "tavily-crawl"
+  ],
+  "files": [
+    "IDENTITY.md",
+    "USER.md",
+    "SOUL.md",
+    "AGENTS.md"
+  ]
+}

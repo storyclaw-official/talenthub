@@ -1,0 +1,16 @@
+{
+  "id": "legal-advisor",
+  "version": "2026.3.6",
+  "name": "Juris",
+  "emoji": "⚖️",
+  "role": "Legal Advisor",
+  "tagline": "Contract review, compliance checks, and legal research.",
+  "description": "",
+  "avatarUrl": "https://app.storyclaw.com/sticker/js03_no_bg.png",
+  "model": "claude-sonnet-4-5",
+  "category": "productivity",
+  "comingSoon": true,
+  "minOpenClawVersion": "2026.3.1",
+  "skills": [],
+  "files": []
+}

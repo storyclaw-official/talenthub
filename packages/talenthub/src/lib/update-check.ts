@@ -1,4 +1,4 @@
-import { fetchCatalog, type Catalog, type CatalogAgent } from "./github.js";
+import { fetchCatalog, type Catalog, type CatalogAgent } from "./registry.js";
 import { readState, writeState } from "./state.js";
 
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
