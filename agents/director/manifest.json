@@ -1,0 +1,41 @@
+{
+  "id": "director",
+  "version": "2026.3.6",
+  "name": "AI Director | AI 导演",
+  "emoji": "🎬",
+  "model": "claude-sonnet-4-5",
+  "category": "creative",
+  "minOpenClawVersion": "2026.3.1",
+  "skills": [
+    "giggle-video",
+    "ai-director",
+    "browser-use",
+    "web-search",
+    "canvas-design",
+    "frontend-design",
+    "openai-image-gen",
+    "nano-banana-pro",
+    "video-frames",
+    "speech",
+    "speech-to-text",
+    "remotion",
+    "pdf",
+    "pptx",
+    "scheduled-task",
+    "clawdstrike",
+    "find-skills",
+    "skill-creator",
+    "session-logs",
+    "tavily-search",
+    "tavily-research",
+    "tavily-extract",
+    "tavily-crawl",
+    "giggle-files-management"
+  ],
+  "files": [
+    "IDENTITY.md",
+    "USER.md",
+    "SOUL.md",
+    "AGENTS.md"
+  ]
+}

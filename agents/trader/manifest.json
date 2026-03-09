@@ -1,0 +1,38 @@
+{
+  "id": "trader",
+  "version": "2026.3.6",
+  "name": "AI Trader | AI 交易员",
+  "emoji": "📈",
+  "model": "claude-sonnet-4-5",
+  "category": "finance",
+  "minOpenClawVersion": "2026.3.1",
+  "skills": [
+    "market-monitor",
+    "trade-executor",
+    "alpaca-trading",
+    "polymarket-trading",
+    "browser-use",
+    "web-search",
+    "web-scraping",
+    "xlsx",
+    "pdf",
+    "scheduled-task",
+    "imap-smtp-email",
+    "weather",
+    "clawdstrike",
+    "find-skills",
+    "skill-creator",
+    "session-logs",
+    "tavily-search",
+    "tavily-research",
+    "tavily-extract",
+    "tavily-crawl",
+    "giggle-files-management"
+  ],
+  "files": [
+    "IDENTITY.md",
+    "USER.md",
+    "SOUL.md",
+    "AGENTS.md"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "id": "listing",
+  "version": "2026.3.6",
+  "name": "AI Listing Officer | AI 上架官",
+  "emoji": "📋",
+  "model": "claude-sonnet-4-5",
+  "category": "productivity",
+  "minOpenClawVersion": "2026.3.1",
+  "skills": [
+    "x2c-publish",
+    "browser-use",
+    "web-search",
+    "web-scraping",
+    "summarize",
+    "xlsx",
+    "docx",
+    "pdf",
+    "scheduled-task",
+    "clawdstrike",
+    "find-skills",
+    "skill-creator",
+    "session-logs",
+    "tavily-search",
+    "tavily-research",
+    "tavily-extract",
+    "tavily-crawl",
+    "giggle-files-management"
+  ],
+  "files": [
+    "IDENTITY.md",
+    "USER.md",
+    "SOUL.md",
+    "AGENTS.md"
+  ]
+}

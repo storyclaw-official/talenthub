@@ -1,0 +1,34 @@
+{
+  "name": "@storyclaw/talenthub",
+  "version": "0.1.0",
+  "description": "CLI tool to manage StoryClaw AI agents",
+  "type": "module",
+  "bin": {
+    "talenthub": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "commander": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.18"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storyclaw-official/agents"
+  }
+}

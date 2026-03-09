@@ -1,0 +1,9 @@
+{
+  "name": "storyclaw-agents",
+  "private": true,
+  "description": "StoryClaw agent definitions and the talenthub CLI",
+  "scripts": {
+    "build": "pnpm -r build",
+    "catalog": "bun scripts/generate-catalog.ts"
+  }
+}

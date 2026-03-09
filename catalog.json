@@ -1,0 +1,41 @@
+{
+  "catalogVersion": 1,
+  "updatedAt": "2026-03-06T10:08:37.412Z",
+  "agents": {
+    "director": {
+      "version": "2026.3.6",
+      "name": "AI Director | AI 导演",
+      "emoji": "🎬",
+      "category": "creative",
+      "skillCount": 24
+    },
+    "listing": {
+      "version": "2026.3.6",
+      "name": "AI Listing Officer | AI 上架官",
+      "emoji": "📋",
+      "category": "productivity",
+      "skillCount": 18
+    },
+    "main": {
+      "version": "2026.3.6",
+      "name": "AI Assistant | AI 助理",
+      "emoji": "🗂",
+      "category": "productivity",
+      "skillCount": 26
+    },
+    "publisher": {
+      "version": "2026.3.6",
+      "name": "AI Publisher | AI 发布员",
+      "emoji": "📢",
+      "category": "productivity",
+      "skillCount": 20
+    },
+    "trader": {
+      "version": "2026.3.6",
+      "name": "AI Trader | AI 交易员",
+      "emoji": "📈",
+      "category": "finance",
+      "skillCount": 21
+    }
+  }
+}

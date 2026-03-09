@@ -1,0 +1,43 @@
+{
+  "id": "main",
+  "version": "2026.3.6",
+  "name": "AI Assistant | AI 助理",
+  "emoji": "🗂",
+  "model": "claude-sonnet-4-5",
+  "category": "productivity",
+  "minOpenClawVersion": "2026.3.1",
+  "skills": [
+    "browser-use",
+    "web-search",
+    "web-scraping",
+    "frontend-design",
+    "remotion",
+    "summarize",
+    "pdf",
+    "docx",
+    "xlsx",
+    "pptx",
+    "imap-smtp-email",
+    "local-tools",
+    "scheduled-task",
+    "weather",
+    "films-search",
+    "music-search",
+    "clawdstrike",
+    "find-skills",
+    "skill-creator",
+    "session-logs",
+    "agent-reach",
+    "tavily-search",
+    "tavily-research",
+    "tavily-extract",
+    "tavily-crawl",
+    "giggle-files-management"
+  ],
+  "files": [
+    "IDENTITY.md",
+    "USER.md",
+    "SOUL.md",
+    "AGENTS.md"
+  ]
+}
