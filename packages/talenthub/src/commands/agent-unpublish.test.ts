@@ -71,7 +71,7 @@ describe("agentUnpublish", () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(1)
     const call = mockFetch.mock.calls[0]
-    expect(call[0]).toBe("http://localhost:3000/api/talent/registry/test-agent/unpublish")
+    expect(call[0]).toBe("http://localhost:3000/api/talenthub/registry/test-agent/unpublish")
     expect(console.log).toHaveBeenCalledWith("✓ Agent archived. Data preserved.")
   })
 

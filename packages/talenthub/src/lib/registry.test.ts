@@ -14,7 +14,7 @@ afterEach(() => {
   vi.unstubAllEnvs()
 })
 
-const BASE = "https://app.storyclaw.com/api/talent/registry"
+const BASE = "https://app.storyclaw.com/api/talenthub/registry"
 
 const sampleCatalog = {
   catalogVersion: 2,
@@ -48,7 +48,7 @@ describe("fetchCatalog", () => {
     })
     const result = await fetchCatalog()
     expect(result).toEqual(sampleCatalog)
-    expect(mockFetch).toHaveBeenCalledWith(`${BASE}/catalog`)
+    expect(mockFetch.mock.calls[0][0]).toBe(`${BASE}/catalog`)
   })
 
   it("throws on HTTP error", async () => {
@@ -63,7 +63,7 @@ describe("fetchCatalog", () => {
       json: () => Promise.resolve(sampleCatalog),
     })
     await fetchCatalog()
-    expect(mockFetch).toHaveBeenCalledWith("http://localhost:3000/api/talent/registry/catalog")
+    expect(mockFetch.mock.calls[0][0]).toBe("http://localhost:3000/api/talenthub/registry/catalog")
   })
 })
 
@@ -75,7 +75,7 @@ describe("fetchManifest", () => {
     })
     const result = await fetchManifest("main")
     expect(result).toEqual(sampleManifest)
-    expect(mockFetch).toHaveBeenCalledWith(`${BASE}/main`)
+    expect(mockFetch.mock.calls[0][0]).toBe(`${BASE}/main`)
   })
 
   it("throws descriptive error for missing agent", async () => {

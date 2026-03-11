@@ -1,5 +1,6 @@
 import readline from "node:readline"
 import { readAuth, getRegistryBaseUrl } from "../lib/auth.js"
+import { fetchRetry } from "../lib/fetch.js"
 
 function confirm(question: string): Promise<boolean> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
@@ -27,7 +28,7 @@ export async function agentUnpublish(name: string): Promise<void> {
   }
 
   const base = getRegistryBaseUrl()
-  const res = await fetch(`${base}/api/talent/registry/${name}/unpublish`, {
+  const res = await fetchRetry(`${base}/api/talenthub/registry/${name}/unpublish`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

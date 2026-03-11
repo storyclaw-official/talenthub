@@ -120,7 +120,7 @@ describe("agentPublish", () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(1)
     const call = mockFetch.mock.calls[0]
-    expect(call[0]).toBe("http://localhost:3000/api/talent/registry/publish")
+    expect(call[0]).toBe("http://localhost:3000/api/talenthub/registry/publish")
     const body = JSON.parse(call[1].body)
     expect(body.id).toBe("test-agent")
     expect(body.soul_prompt).toBe("# Test Soul")

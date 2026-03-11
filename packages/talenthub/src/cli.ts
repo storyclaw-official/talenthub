@@ -1,4 +1,10 @@
 #!/usr/bin/env node
+import dns from "node:dns"
+
+// IPv6 is unreachable on many networks (especially behind NAT/China);
+// try IPv4 first to avoid EHOSTUNREACH delays on every fetch.
+dns.setDefaultResultOrder("ipv4first")
+
 import { Command } from "commander"
 import { agentInstall } from "./commands/agent-install.js"
 import { agentList } from "./commands/agent-list.js"

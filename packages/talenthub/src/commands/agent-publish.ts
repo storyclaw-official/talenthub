@@ -3,6 +3,7 @@ import path from "node:path"
 import readline from "node:readline"
 import { readAuth, getRegistryBaseUrl } from "../lib/auth.js"
 import { findAgentEntry, readConfig } from "../lib/config.js"
+import { fetchRetry } from "../lib/fetch.js"
 import { resolveWorkspaceDir } from "../lib/paths.js"
 
 function prompt(question: string): Promise<string> {
@@ -60,7 +61,7 @@ function readAgentDir(dir: string): {
   return { manifest, files }
 }
 
-export async function agentPublish(name: string, opts: { dir?: string }): Promise<void> {
+export async function agentPublish(name: string, opts: { dir?: string } = {}): Promise<void> {
   const auth = readAuth()
   if (!auth) {
     console.error("Not logged in. Run \"talenthub login\" first.")
@@ -120,7 +121,9 @@ export async function agentPublish(name: string, opts: { dir?: string }): Promis
   console.log(`\nPublishing ${payload.emoji || ""} ${payload.name} v${finalVersion}...`)
 
   const base = getRegistryBaseUrl()
-  const res = await fetch(`${base}/api/talent/registry/publish`, {
+  const url = `${base}/api/talenthub/registry/publish`
+
+  const res = await fetchRetry(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

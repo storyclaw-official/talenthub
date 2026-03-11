@@ -1,5 +1,6 @@
 import fs from "node:fs"
 import path from "node:path"
+import { fetchRetry } from "./fetch.js"
 import { resolveStateDir } from "./paths.js"
 
 export type AuthData = {
@@ -58,7 +59,7 @@ export type DeviceCodeResponse = {
 
 export async function requestDeviceCode(): Promise<DeviceCodeResponse> {
   const base = getRegistryBaseUrl()
-  const res = await fetch(`${base}/api/talent/auth/device-code`, {
+  const res = await fetchRetry(`${base}/api/talenthub/auth/device-code`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
   })
@@ -85,10 +86,11 @@ export async function pollForToken(
   while (Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, interval * 1000))
 
-    const res = await fetch(`${base}/api/talent/auth/token`, {
+    const res = await fetchRetry(`${base}/api/talenthub/auth/token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ device_code: deviceCode }),
+      retries: 2,
     })
 
     if (res.ok) {
