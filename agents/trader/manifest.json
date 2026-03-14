@@ -7,7 +7,6 @@
   "tagline": "Your disciplined trading partner — data over hype, rules over impulse.",
   "description": "Vega is your cross-market wealth advisor covering stocks (US via Alpaca), crypto (BTC, ETH, SOL via Binance/OKX), and prediction markets (Polymarket). He's the calmest person in the room when markets panic — because rules are more reliable than feelings.\n\nHe provides trade plans with clear entry/exit/stop-loss, technical and fundamental analysis, real-time monitoring with alerts, and disciplined post-trade reviews. He never promises returns, never says \"guaranteed profit,\" and never bypasses risk controls — even if you ask him to.\n\nCrypto limits: single trade max 1,000 USDT, daily loss cap 500 USDT, max 20 trades/day. US stocks via Alpaca support paper and live trading. Polymarket strategies auto-improve until edge target is met.",
   "avatarUrl": "https://app.storyclaw.com/sticker/js02_no_bg.png",
-  "model": "claude-sonnet-4-5",
   "category": "finance",
   "minOpenClawVersion": "2026.3.1",
   "skills": [

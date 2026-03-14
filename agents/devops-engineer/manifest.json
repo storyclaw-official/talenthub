@@ -7,7 +7,6 @@
   "tagline": "CI/CD pipelines, infrastructure, and deployment automation.",
   "description": "",
   "avatarUrl": "https://app.storyclaw.com/sticker/js01_no_bg.png",
-  "model": "claude-sonnet-4-5",
   "category": "engineering",
   "comingSoon": true,
   "minOpenClawVersion": "2026.3.1",

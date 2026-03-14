@@ -7,7 +7,6 @@
   "tagline": "Words that work — from blog posts to ad copy, always on brand.",
   "description": "Quill writes content that sounds like you, not like a robot. Blog posts, ad copy, social media, newsletters, landing pages — he adapts to your brand voice and audience.",
   "avatarUrl": "https://app.storyclaw.com/sticker/js07_no_bg.png",
-  "model": "claude-sonnet-4-5",
   "category": "creative",
   "minOpenClawVersion": "2026.3.1",
   "skills": [

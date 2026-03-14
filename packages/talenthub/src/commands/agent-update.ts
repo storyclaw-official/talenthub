@@ -61,7 +61,6 @@ async function updateAgent(agentId: string): Promise<boolean> {
     id: manifest.id,
     name: manifest.name,
     skills: manifest.skills,
-    model: manifest.model,
   })
   writeConfig(updatedCfg)
   markInstalled(manifest.id, manifest.version)

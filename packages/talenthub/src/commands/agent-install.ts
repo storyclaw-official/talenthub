@@ -63,7 +63,6 @@ export async function agentInstall(name: string, options: { force?: boolean }): 
     id: manifest.id,
     name: manifest.name,
     skills: manifest.skills,
-    model: manifest.model,
   })
   writeConfig(updatedCfg)
 

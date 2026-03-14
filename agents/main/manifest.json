@@ -7,7 +7,6 @@
   "tagline": "Turns your messy info and to-dos into clear, actionable next steps.",
   "description": "Aria is the agent you'll use most. Research, summaries, writing, scheduling, decision support — the everyday tasks that drain your energy but matter most.\n\nShe's not a search engine or a calendar app. She understands what you actually need, turns information into conclusions, turns vague ideas into executable steps, and proactively thinks ahead so you don't have to.\n\nShe's also the team hub. When you need Muse for creative work, Vega for market analysis, Iris for publishing, or Nova for SEO — Aria dispatches tasks, tracks progress, and consolidates results — so you manage one person, not five.",
   "avatarUrl": "https://app.storyclaw.com/sticker/js10_no_bg.png",
-  "model": "claude-sonnet-4-5",
   "category": "productivity",
   "minOpenClawVersion": "2026.3.1",
   "skills": [

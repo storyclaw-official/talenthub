@@ -7,7 +7,6 @@
   "tagline": "Turns raw data into clear decisions — charts, insights, no jargon.",
   "description": "Cipher takes messy data and turns it into clear insights. CSV files, spreadsheets, databases, APIs — he handles the wrangling so you can focus on decisions.",
   "avatarUrl": "https://app.storyclaw.com/sticker/js13_no_bg.png",
-  "model": "claude-sonnet-4-5",
   "category": "finance",
   "minOpenClawVersion": "2026.3.1",
   "skills": [
