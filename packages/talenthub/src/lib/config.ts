@@ -61,11 +61,22 @@ export function addOrUpdateAgent(
   cfg: OpenClawConfig,
   entry: AgentEntry,
 ): OpenClawConfig {
-  const list = [...(cfg.agents?.list ?? [])];
+  const existingList = cfg.agents?.list ?? [];
+  const list = [...existingList];
   const idx = findAgentIndex(cfg, entry.id);
   if (idx >= 0) {
     list[idx] = { ...list[idx], ...entry };
   } else {
+    // When there was no agents.list (implicit "main" agent from defaults)
+    // and we're adding a non-main agent, prepend a "main" placeholder so
+    // the gateway still sees the original default agent.
+    if (
+      existingList.length === 0 &&
+      entry.id.toLowerCase() !== "main" &&
+      cfg.agents?.defaults
+    ) {
+      list.unshift({ id: "main", default: true } as AgentEntry);
+    }
     list.push(entry);
   }
   return { ...cfg, agents: { ...cfg.agents, list } };

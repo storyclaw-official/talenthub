@@ -1,8 +1,11 @@
 import { execSync } from "node:child_process";
+import os from "node:os";
+
+const SAFE_CWD = os.homedir();
 
 function hasClawhub(): boolean {
   try {
-    execSync("clawhub --version", { stdio: "pipe" });
+    execSync("clawhub -V", { stdio: "pipe", cwd: SAFE_CWD });
     return true;
   } catch {
     return false;
@@ -26,8 +29,9 @@ export function isClawhubAvailable(): boolean {
 
 export function installSkill(slug: string, workdir: string): boolean {
   try {
-    execSync(`clawhub install ${slug} --workdir "${workdir}" --no-input`, {
+    execSync(`clawhub install ${slug} --workdir "${workdir}" --no-input --force`, {
       stdio: "inherit",
+      cwd: workdir,
     });
     return true;
   } catch {
@@ -38,8 +42,9 @@ export function installSkill(slug: string, workdir: string): boolean {
 
 export function updateAllSkills(workdir: string): boolean {
   try {
-    execSync(`clawhub update --all --workdir "${workdir}" --no-input`, {
+    execSync(`clawhub update --all --workdir "${workdir}" --no-input --force`, {
       stdio: "inherit",
+      cwd: workdir,
     });
     return true;
   } catch {
