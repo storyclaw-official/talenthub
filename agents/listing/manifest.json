@@ -1,6 +1,6 @@
 {
   "id": "listing",
-  "version": "2026.3.6",
+  "version": "2026.3.14",
   "name": "Nova",
   "emoji": "📋",
   "role": "Listing Officer",
@@ -11,7 +11,7 @@
   "category": "productivity",
   "minOpenClawVersion": "2026.3.1",
   "skills": [
-    "x2c-publish",
+    "storyclaw-x2c-publish",
     "browser-use",
     "web-search",
     "web-scraping",

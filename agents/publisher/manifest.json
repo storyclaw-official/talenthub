@@ -1,6 +1,6 @@
 {
   "id": "publisher",
-  "version": "2026.3.6",
+  "version": "2026.3.14",
   "name": "Iris",
   "emoji": "📢",
   "role": "Content Publisher",
@@ -11,8 +11,8 @@
   "category": "creative",
   "minOpenClawVersion": "2026.3.1",
   "skills": [
-    "x2c-publish",
-    "x-manager",
+    "storyclaw-x2c-publish",
+    "storyclaw-x-manager",
     "browser-use",
     "web-search",
     "web-scraping",

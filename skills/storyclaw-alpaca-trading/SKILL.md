@@ -1,5 +1,5 @@
 ---
-name: alpaca-trading
+name: storyclaw-alpaca-trading
 version: "0.1.0"
 description: US stock and crypto trading via Alpaca API. Paper trading (simulated) and real trading supported. Real-time quotes, orders, positions, RSI strategy.
 metadata:

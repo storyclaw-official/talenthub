@@ -1,5 +1,5 @@
 ---
-name: polymarket-trading
+name: storyclaw-polymarket-trading
 version: "0.1.0"
 description: Self-evolving Polymarket trading bot. Design strategy with user, run paper trading, auto-improve until edge target met, then ask to switch to live.
 metadata:

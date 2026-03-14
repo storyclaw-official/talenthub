@@ -1,6 +1,6 @@
 {
   "id": "director",
-  "version": "2026.3.6",
+  "version": "2026.3.14",
   "name": "Muse",
   "emoji": "🎬",
   "role": "Video Director",
@@ -11,8 +11,13 @@
   "category": "creative",
   "minOpenClawVersion": "2026.3.1",
   "skills": [
-    "giggle-video",
-    "ai-director",
+    "giggle-generation-aimv",
+    "giggle-generation-drama",
+    "giggle-generation-image",
+    "giggle-generation-music",
+    "giggle-generation-scripts",
+    "giggle-generation-speech",
+    "giggle-generation-video",
     "browser-use",
     "web-search",
     "canvas-design",

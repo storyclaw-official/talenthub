@@ -1,5 +1,5 @@
 ---
-name: x-manager
+name: storyclaw-x-manager
 version: "0.1.0"
 description: Manage X (Twitter) accounts — post tweets, like, reply, retweet, view timeline, search, auto-interact, analyze data.
 metadata:

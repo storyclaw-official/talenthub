@@ -1,6 +1,6 @@
 {
   "id": "trader",
-  "version": "2026.3.6",
+  "version": "2026.3.14",
   "name": "Vega",
   "emoji": "📊",
   "role": "Wealth Advisor",
@@ -11,10 +11,8 @@
   "category": "finance",
   "minOpenClawVersion": "2026.3.1",
   "skills": [
-    "market-monitor",
-    "trade-executor",
-    "alpaca-trading",
-    "polymarket-trading",
+    "storyclaw-alpaca-trading",
+    "storyclaw-polymarket-trading",
     "browser-use",
     "web-search",
     "web-scraping",

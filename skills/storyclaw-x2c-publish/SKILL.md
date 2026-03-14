@@ -1,5 +1,5 @@
 ---
-name: x2c-publish
+name: storyclaw-x2c-publish
 version: "0.1.0"
 description: X2C Distribution and Wallet API — publish video to X2C platform, manage assets (balance, claim X2C, swap to USDC, withdraw, transactions).
 metadata:
