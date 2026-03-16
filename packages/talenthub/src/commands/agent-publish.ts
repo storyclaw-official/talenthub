@@ -116,6 +116,7 @@ export async function agentPublish(name: string, opts: { dir?: string } = {}): P
     agents_prompt: files["AGENTS.md"] || "",
     min_openclaw_version: (manifest.minOpenClawVersion as string) || null,
     avatar_url: (manifest.avatarUrl as string) || null,
+    is_public: true,
   }
 
   console.log(`\nPublishing ${payload.emoji || ""} ${payload.name} v${finalVersion}...`)

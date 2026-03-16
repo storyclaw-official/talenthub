@@ -14,7 +14,7 @@ const sampleManifest = {
   tagline: "Test",
   description: "Test",
   minOpenClawVersion: "2026.3.1",
-  skills: ["inferen-sh/skills@web-search", "browser-use/browser-use@browser-use", "anthropics/skills@new-skill"],
+  skills: ["https://github.com/inferen-sh/skills@web-search", "https://github.com/browser-use/browser-use@browser-use", "https://github.com/anthropics/skills@new-skill"],
   avatarUrl: null,
   files: { "IDENTITY.md": "# Updated Identity" },
 }
@@ -94,7 +94,7 @@ describe("agentUpdate", () => {
     expect(state.agents.director.version).toBe("2026.3.7")
 
     expect(installAllSkills).toHaveBeenCalledWith(
-      ["inferen-sh/skills@web-search", "browser-use/browser-use@browser-use", "anthropics/skills@new-skill"],
+      ["https://github.com/inferen-sh/skills@web-search", "https://github.com/browser-use/browser-use@browser-use", "https://github.com/anthropics/skills@new-skill"],
       wsDir,
     )
   })

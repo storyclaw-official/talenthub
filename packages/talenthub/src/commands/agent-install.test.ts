@@ -22,7 +22,7 @@ const sampleManifest = {
   tagline: "Test",
   description: "Test",
   minOpenClawVersion: "2026.3.1",
-  skills: ["inferen-sh/skills@web-search", "browser-use/browser-use@browser-use"],
+  skills: ["https://github.com/inferen-sh/skills@web-search", "https://github.com/browser-use/browser-use@browser-use"],
   avatarUrl: null,
   files: { "IDENTITY.md": "# Director Identity" },
 }
@@ -82,7 +82,7 @@ describe("agentInstall", () => {
     expect(fs.readFileSync(path.join(wsDir, "IDENTITY.md"), "utf-8")).toBe("# Director Identity")
 
     expect(installAllSkills).toHaveBeenCalledTimes(1)
-    expect(installAllSkills).toHaveBeenCalledWith(["inferen-sh/skills@web-search", "browser-use/browser-use@browser-use"], wsDir)
+    expect(installAllSkills).toHaveBeenCalledWith(["https://github.com/inferen-sh/skills@web-search", "https://github.com/browser-use/browser-use@browser-use"], wsDir)
   })
 
   it("exits when agent not found in catalog", async () => {

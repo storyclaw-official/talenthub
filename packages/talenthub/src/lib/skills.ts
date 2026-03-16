@@ -23,13 +23,16 @@ const SKILLS_BIN = resolveSkillsBin()
 
 // ── Skill spec parsing ───────────────────────────────────────────────────────
 //
-// Manifest entries use the fully-qualified format: "owner/repo@skill-name"
-// e.g. "anthropics/skills@pdf", "tavily-ai/skills@search"
+// Manifest entries use "https://github.com/owner/repo@skill-name"
+// e.g. "https://github.com/anthropics/skills@pdf"
+// The repo part (before @) is passed directly to `skills add` as the source.
 
 export type SkillSpec = { repo: string; skill: string }
 
 /**
- * Parse a fully-qualified skill string ("owner/repo@skill") into its parts.
+ * Parse a skill URL string into repo source and skill name.
+ * Accepts "https://github.com/owner/repo@skill" (preferred) and
+ * legacy "owner/repo@skill" format.
  * Returns undefined if the string is not in the expected format.
  */
 export function parseSkillSpec(entry: string): SkillSpec | undefined {
@@ -52,8 +55,9 @@ export function skillName(entry: string): string {
 // ── Shared skills directory ──────────────────────────────────────────────────
 
 /**
- * Shared skills directory — single canonical copy of each skill.
- * Individual agent workspaces get symlinks pointing here.
+ * Where installed skill folders live: `~/.openclaw/skills/<name>/`.
+ * The `skills` CLI creates a `skills/` subdirectory under its cwd,
+ * so we pass `resolveStateDir()` (~/.openclaw/) as the cwd.
  */
 export function resolveSharedSkillsDir(): string {
   return path.join(resolveStateDir(), "skills")
@@ -72,28 +76,40 @@ export function isSkillInstalled(name: string): boolean {
 // ── Install / link ───────────────────────────────────────────────────────────
 
 /**
+ * Install one or more skills from a single repo via `skills add` into the
+ * shared directory. Accepts multiple skill names so only one clone is needed.
+ *
+ * Returns the list of skill names that were successfully installed.
+ */
+function installSkillsFromRepo(repo: string, skillNames: string[]): string[] {
+  const skillFlag = skillNames.join(" ")
+  try {
+    const cmd = `node ${SKILLS_BIN} add ${repo} --skill ${skillFlag} --agent openclaw -y`
+    execSync(cmd, { stdio: "inherit", cwd: resolveStateDir(), timeout: 300_000 })
+  } catch {
+    console.error(`  Warning: failed to install skills from ${repo}: ${skillNames.join(", ")}`)
+  }
+  return skillNames.filter((s) => isSkillInstalled(s))
+}
+
+/**
  * Install a single skill via `skills add` into the shared directory,
  * then symlink it into the agent workspace.
  *
- * @param entry Fully-qualified skill string ("owner/repo@skill")
+ * @param entry Skill URL string ("https://github.com/owner/repo@skill")
  * @param workspaceDir Agent workspace directory
  * Returns true on success, false on failure (logged, non-fatal).
  */
 export function installSkill(entry: string, workspaceDir: string): boolean {
   const spec = parseSkillSpec(entry)
   if (!spec) {
-    console.error(`  Warning: invalid skill spec "${entry}" — expected "owner/repo@skill"`)
+    console.error(`  Warning: invalid skill spec "${entry}" — expected "https://github.com/owner/repo@skill"`)
     return false
   }
 
   if (!isSkillInstalled(spec.skill)) {
-    try {
-      const cmd = `node ${SKILLS_BIN} add ${spec.repo} --skill ${spec.skill} --agent openclaw -y`
-      execSync(cmd, { stdio: "inherit", cwd: resolveSharedSkillsDir() })
-    } catch {
-      console.error(`  Warning: failed to install skill "${entry}"`)
-      return false
-    }
+    const ok = installSkillsFromRepo(spec.repo, [spec.skill])
+    if (ok.length === 0) return false
   }
 
   if (!isSkillInstalled(spec.skill)) {
@@ -129,31 +145,51 @@ function linkSkillToWorkspace(name: string, workspaceDir: string): void {
 }
 
 /**
- * Install all skills for an agent: skip already-installed, install missing,
- * symlink everything into the workspace.
+ * Install all skills for an agent: skip already-installed, batch-install
+ * missing skills grouped by repo (one clone per repo), then symlink
+ * everything into the workspace.
  *
- * @param skills Array of fully-qualified skill strings ("owner/repo@skill")
+ * @param skills Array of skill URL strings ("https://github.com/owner/repo@skill")
  * Returns { installed, skipped, failed } counts.
  */
 export function installAllSkills(
   skills: string[],
   workspaceDir: string,
 ): { installed: number; skipped: number; failed: number } {
-  fs.mkdirSync(resolveSharedSkillsDir(), { recursive: true })
+  fs.mkdirSync(resolveStateDir(), { recursive: true })
 
   let installed = 0
   let skipped = 0
   let failed = 0
 
+  // Group missing skills by repo so each repo is cloned only once
+  const needInstall = new Map<string, string[]>()
+
   for (const entry of skills) {
-    const name = skillName(entry)
-    if (isSkillInstalled(name)) {
-      linkSkillToWorkspace(name, workspaceDir)
+    const spec = parseSkillSpec(entry)
+    if (!spec) {
+      console.error(`  Warning: invalid skill spec "${entry}" — expected "https://github.com/owner/repo@skill"`)
+      failed++
+      continue
+    }
+    if (isSkillInstalled(spec.skill)) {
+      linkSkillToWorkspace(spec.skill, workspaceDir)
       skipped++
     } else {
-      const ok = installSkill(entry, workspaceDir)
-      if (ok) installed++
-      else failed++
+      const list = needInstall.get(spec.repo) ?? []
+      list.push(spec.skill)
+      needInstall.set(spec.repo, list)
+    }
+  }
+
+  // Batch install: one `skills add` per repo
+  for (const [repo, skillNames] of needInstall) {
+    const ok = installSkillsFromRepo(repo, skillNames)
+    installed += ok.length
+    failed += skillNames.length - ok.length
+
+    for (const name of ok) {
+      linkSkillToWorkspace(name, workspaceDir)
     }
   }
 
@@ -167,7 +203,7 @@ export function updateAllSkills(): boolean {
   try {
     execSync(`node ${SKILLS_BIN} update --agent openclaw`, {
       stdio: "inherit",
-      cwd: resolveSharedSkillsDir(),
+      cwd: resolveStateDir(),
     })
     return true
   } catch {

@@ -27,7 +27,14 @@ afterEach(() => {
 const { parseSkillSpec, skillName, installSkill, isSkillInstalled, installAllSkills, updateAllSkills } = await import("./skills.js")
 
 describe("parseSkillSpec", () => {
-  it("parses owner/repo@skill", () => {
+  it("parses GitHub URL format", () => {
+    expect(parseSkillSpec("https://github.com/inferen-sh/skills@web-search")).toEqual({
+      repo: "https://github.com/inferen-sh/skills",
+      skill: "web-search",
+    })
+  })
+
+  it("parses legacy owner/repo@skill format", () => {
     expect(parseSkillSpec("inferen-sh/skills@web-search")).toEqual({
       repo: "inferen-sh/skills",
       skill: "web-search",
@@ -44,7 +51,11 @@ describe("parseSkillSpec", () => {
 })
 
 describe("skillName", () => {
-  it("extracts skill name from qualified entry", () => {
+  it("extracts skill name from GitHub URL entry", () => {
+    expect(skillName("https://github.com/anthropics/skills@pdf")).toBe("pdf")
+  })
+
+  it("extracts skill name from legacy entry", () => {
     expect(skillName("anthropics/skills@pdf")).toBe("pdf")
   })
 
@@ -77,7 +88,7 @@ describe("installSkill", () => {
       fs.writeFileSync(path.join(skillDir, "SKILL.md"), "# Web Search")
     })
 
-    expect(installSkill("inferen-sh/skills@web-search", wsDir)).toBe(true)
+    expect(installSkill("https://github.com/inferen-sh/skills@web-search", wsDir)).toBe(true)
     expect(mockExecSync).toHaveBeenCalledTimes(1)
 
     const link = path.join(wsDir, "skills", "web-search")
@@ -98,7 +109,7 @@ describe("installSkill", () => {
     fs.mkdirSync(wsDir, { recursive: true })
     mockExecSync.mockImplementation(() => { throw new Error("fail") })
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
-    expect(installSkill("inferen-sh/skills@web-search", wsDir)).toBe(false)
+    expect(installSkill("https://github.com/inferen-sh/skills@web-search", wsDir)).toBe(false)
     errorSpy.mockRestore()
   })
 
@@ -109,7 +120,7 @@ describe("installSkill", () => {
     fs.mkdirSync(skillDir, { recursive: true })
     fs.writeFileSync(path.join(skillDir, "SKILL.md"), "# Web Search")
 
-    expect(installSkill("inferen-sh/skills@web-search", wsDir)).toBe(true)
+    expect(installSkill("https://github.com/inferen-sh/skills@web-search", wsDir)).toBe(true)
     expect(mockExecSync).not.toHaveBeenCalled()
 
     const link = path.join(wsDir, "skills", "web-search")
@@ -135,7 +146,7 @@ describe("installAllSkills", () => {
     })
 
     const result = installAllSkills(
-      ["browser-use/browser-use@browser-use", "inferen-sh/skills@web-search"],
+      ["https://github.com/browser-use/browser-use@browser-use", "https://github.com/inferen-sh/skills@web-search"],
       wsDir,
     )
     expect(result.skipped).toBe(1)
