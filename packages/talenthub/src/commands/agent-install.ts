@@ -1,6 +1,6 @@
 import fs from "node:fs"
 import path from "node:path"
-import { isClawhubAvailable, installSkill } from "../lib/clawhub.js"
+import { installAllSkills } from "../lib/skills.js"
 import { addOrUpdateAgent, findAgentEntry, readConfig, writeConfig } from "../lib/config.js"
 import { fetchCatalog, fetchManifest } from "../lib/registry.js"
 import { resolveWorkspaceDir } from "../lib/paths.js"
@@ -28,8 +28,6 @@ export async function agentInstall(name: string, options: { force?: boolean }): 
     process.exit(1)
   }
 
-  const hasClawhub = isClawhubAvailable()
-
   const wsDir = resolveWorkspaceDir(name)
   fs.mkdirSync(wsDir, { recursive: true })
 
@@ -44,22 +42,16 @@ export async function agentInstall(name: string, options: { force?: boolean }): 
 
   let installed = 0
   let failed = 0
-  if (hasClawhub && manifest.skills.length > 0) {
-    console.log(`Installing ${manifest.skills.length} skills via clawhub...`)
-    for (const skill of manifest.skills) {
-      const ok = installSkill(skill, wsDir)
-      if (ok) installed++
-      else failed++
-    }
-  } else if (!hasClawhub && manifest.skills.length > 0) {
-    console.log(
-      `Skipping ${manifest.skills.length} skills (clawhub not installed).`,
-    )
-    console.log("Install clawhub later: npm i -g clawhub")
-    console.log(`Then run: talenthub agent update ${name}`)
+  let skipped = 0
+  if (manifest.skills.length > 0) {
+    console.log(`Installing ${manifest.skills.length} skills via npx skills...`)
+    const result = installAllSkills(manifest.skills, wsDir)
+    installed = result.installed
+    failed = result.failed
+    skipped = result.skipped
   }
 
-  let updatedCfg = addOrUpdateAgent(cfg, {
+  const updatedCfg = addOrUpdateAgent(cfg, {
     id: manifest.id,
     name: manifest.name,
     skills: manifest.skills,
@@ -68,14 +60,12 @@ export async function agentInstall(name: string, options: { force?: boolean }): 
 
   markInstalled(manifest.id, manifest.version)
 
-  console.log(
-    `\n${manifest.emoji} Installed ${manifest.name}` +
-      (installed > 0 ? ` with ${installed} skills` : "") +
-      (failed > 0 ? ` (${failed} failed)` : "") +
-      (!hasClawhub && manifest.skills.length > 0
-        ? " (skills pending — install clawhub)"
-        : "") +
-      ".",
-  )
+  const parts: string[] = []
+  if (installed > 0) parts.push(`${installed} installed`)
+  if (skipped > 0) parts.push(`${skipped} already present`)
+  if (failed > 0) parts.push(`${failed} failed`)
+  const skillSummary = parts.length > 0 ? ` (skills: ${parts.join(", ")})` : ""
+
+  console.log(`\n${manifest.emoji} Installed ${manifest.name}${skillSummary}.`)
   console.log("Restart the OpenClaw gateway to apply changes.")
 }

@@ -22,7 +22,7 @@ const sampleManifest = {
   tagline: "Test",
   description: "Test",
   minOpenClawVersion: "2026.3.1",
-  skills: ["web-search", "browser-use"],
+  skills: ["inferen-sh/skills@web-search", "browser-use/browser-use@browser-use"],
   avatarUrl: null,
   files: { "IDENTITY.md": "# Director Identity" },
 }
@@ -32,9 +32,8 @@ vi.mock("../lib/registry.js", () => ({
   fetchManifest: vi.fn().mockResolvedValue(sampleManifest),
 }))
 
-vi.mock("../lib/clawhub.js", () => ({
-  ensureClawhub: vi.fn(),
-  installSkill: vi.fn().mockReturnValue(true),
+vi.mock("../lib/skills.js", () => ({
+  installAllSkills: vi.fn().mockReturnValue({ installed: 2, skipped: 0, failed: 0 }),
 }))
 
 let tmpDir: string
@@ -65,7 +64,7 @@ afterEach(() => {
 const { agentInstall } = await import("./agent-install.js")
 const { readConfig } = await import("../lib/config.js")
 const { readState } = await import("../lib/state.js")
-const { installSkill } = await import("../lib/clawhub.js")
+const { installAllSkills } = await import("../lib/skills.js")
 
 describe("agentInstall", () => {
   it("installs agent, writes config, writes files, installs skills", async () => {
@@ -74,7 +73,6 @@ describe("agentInstall", () => {
     const cfg = readConfig()
     expect(cfg.agents?.list).toHaveLength(1)
     expect(cfg.agents?.list?.[0].id).toBe("director")
-    expect(cfg.agents?.list?.[0].model).toBe("claude-sonnet-4-5")
 
     const state = readState()
     expect(state.agents.director.version).toBe("2026.3.6")
@@ -83,9 +81,8 @@ describe("agentInstall", () => {
     expect(fs.existsSync(path.join(wsDir, "IDENTITY.md"))).toBe(true)
     expect(fs.readFileSync(path.join(wsDir, "IDENTITY.md"), "utf-8")).toBe("# Director Identity")
 
-    expect(installSkill).toHaveBeenCalledTimes(2)
-    expect(installSkill).toHaveBeenCalledWith("web-search", wsDir)
-    expect(installSkill).toHaveBeenCalledWith("browser-use", wsDir)
+    expect(installAllSkills).toHaveBeenCalledTimes(1)
+    expect(installAllSkills).toHaveBeenCalledWith(["inferen-sh/skills@web-search", "browser-use/browser-use@browser-use"], wsDir)
   })
 
   it("exits when agent not found in catalog", async () => {
@@ -120,9 +117,7 @@ describe("agentInstall", () => {
   })
 
   it("handles skill install failures gracefully", async () => {
-    vi.mocked(installSkill)
-      .mockReturnValueOnce(true)
-      .mockReturnValueOnce(false)
+    vi.mocked(installAllSkills).mockReturnValueOnce({ installed: 1, skipped: 0, failed: 1 })
 
     await agentInstall("director", { force: false })
 

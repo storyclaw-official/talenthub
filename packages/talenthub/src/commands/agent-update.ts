@@ -1,6 +1,6 @@
 import fs from "node:fs"
 import path from "node:path"
-import { ensureClawhub, installSkill, updateAllSkills } from "../lib/clawhub.js"
+import { installAllSkills, updateAllSkills, syncSkillLinks } from "../lib/skills.js"
 import { addOrUpdateAgent, readConfig, writeConfig } from "../lib/config.js"
 import { fetchManifest } from "../lib/registry.js"
 import { resolveWorkspaceDir } from "../lib/paths.js"
@@ -17,7 +17,7 @@ async function updateAgent(agentId: string): Promise<boolean> {
     if (fs.existsSync(backupDir)) {
       fs.rmSync(backupDir, { recursive: true, force: true })
     }
-    fs.cpSync(wsDir, backupDir, { recursive: true })
+    fs.cpSync(wsDir, backupDir, { recursive: true, dereference: true })
   }
   fs.mkdirSync(wsDir, { recursive: true })
 
@@ -30,30 +30,10 @@ async function updateAgent(agentId: string): Promise<boolean> {
     }
   }
 
-  // Determine new skills to install
-  const lockPath = path.join(wsDir, ".clawhub", "lock.json")
-  const existingSkills = new Set<string>()
-  if (fs.existsSync(lockPath)) {
-    try {
-      const lock = JSON.parse(fs.readFileSync(lockPath, "utf-8"))
-      for (const entry of lock.skills ?? []) {
-        if (entry.slug) existingSkills.add(entry.slug)
-      }
-    } catch {
-      // Ignore parse errors
-    }
+  // Install any new skills and re-sync symlinks for all
+  if (manifest.skills.length > 0) {
+    installAllSkills(manifest.skills, wsDir)
   }
-
-  const newSkills = manifest.skills.filter((s) => !existingSkills.has(s))
-  if (newSkills.length > 0) {
-    ensureClawhub()
-    for (const skill of newSkills) {
-      installSkill(skill, wsDir)
-    }
-  }
-
-  // Update all existing skills
-  updateAllSkills(wsDir)
 
   // Update config
   const cfg = readConfig()
@@ -75,8 +55,11 @@ export async function agentUpdate(name?: string, options?: { all?: boolean }): P
       return
     }
 
-    ensureClawhub()
-    console.log(`Found ${updates.length} update(s):\n`)
+    // Update shared skills first
+    console.log("Updating shared skills...")
+    updateAllSkills()
+
+    console.log(`\nFound ${updates.length} update(s):\n`)
     for (const u of updates) {
       console.log(`  Updating ${u.name}: ${u.currentVersion} → ${u.latestVersion}`)
       await updateAgent(u.agentId)
@@ -92,7 +75,9 @@ export async function agentUpdate(name?: string, options?: { all?: boolean }): P
     process.exit(1)
   }
 
-  ensureClawhub()
+  console.log("Updating shared skills...")
+  updateAllSkills()
+
   console.log(`Updating agent "${name}"...`)
   await updateAgent(name)
   console.log(`✓ Agent "${name}" updated. Restart the OpenClaw gateway to apply changes.`)

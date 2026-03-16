@@ -1,5 +1,5 @@
 {
-  "name": "storyclaw-agents",
+  "name": "talenthub",
   "private": true,
   "description": "StoryClaw agent definitions and the talenthub CLI",
   "scripts": {

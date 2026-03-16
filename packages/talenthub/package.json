@@ -16,7 +16,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "commander": "^13.0.0"
+    "commander": "^13.0.0",
+    "skills": "^1.4.5"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

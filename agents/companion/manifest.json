@@ -10,10 +10,8 @@
   "category": "companion",
   "minOpenClawVersion": "2026.3.1",
   "skills": [
-    "proactive-chat",
-    "emotion-journal",
-    "session-logs",
-    "scheduled-task"
+    "steipete/clawdis@session-logs",
+    "netease-youdao/lobsterai@scheduled-task"
   ],
   "files": [
     "IDENTITY.md",

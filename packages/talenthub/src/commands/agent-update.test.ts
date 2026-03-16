@@ -14,7 +14,7 @@ const sampleManifest = {
   tagline: "Test",
   description: "Test",
   minOpenClawVersion: "2026.3.1",
-  skills: ["web-search", "browser-use", "new-skill"],
+  skills: ["inferen-sh/skills@web-search", "browser-use/browser-use@browser-use", "anthropics/skills@new-skill"],
   avatarUrl: null,
   files: { "IDENTITY.md": "# Updated Identity" },
 }
@@ -30,10 +30,10 @@ vi.mock("../lib/registry.js", () => ({
   }),
 }))
 
-vi.mock("../lib/clawhub.js", () => ({
-  ensureClawhub: vi.fn(),
-  installSkill: vi.fn().mockReturnValue(true),
+vi.mock("../lib/skills.js", () => ({
+  installAllSkills: vi.fn().mockReturnValue({ installed: 1, skipped: 2, failed: 0 }),
   updateAllSkills: vi.fn().mockReturnValue(true),
+  syncSkillLinks: vi.fn(),
 }))
 
 let tmpDir: string
@@ -66,7 +66,7 @@ afterEach(() => {
 const { agentUpdate } = await import("./agent-update.js")
 const { readConfig } = await import("../lib/config.js")
 const { readState } = await import("../lib/state.js")
-const { installSkill, updateAllSkills } = await import("../lib/clawhub.js")
+const { installAllSkills, updateAllSkills } = await import("../lib/skills.js")
 
 describe("agentUpdate", () => {
   it("updates a single installed agent", async () => {
@@ -88,34 +88,15 @@ describe("agentUpdate", () => {
     expect(fs.existsSync(`${wsDir}.bak`)).toBe(true)
 
     const cfg = readConfig()
-    expect(cfg.agents?.list?.[0].model).toBe("claude-sonnet-4-5")
+    expect(cfg.agents?.list?.[0].name).toBe("AI Director")
 
     const state = readState()
     expect(state.agents.director.version).toBe("2026.3.7")
-  })
 
-  it("installs only new skills (not already in lock.json)", async () => {
-    const stateDir = path.join(tmpDir, ".openclaw")
-    const wsDir = path.join(stateDir, "workspace-director")
-    const lockDir = path.join(wsDir, ".clawhub")
-    fs.mkdirSync(lockDir, { recursive: true })
-    fs.writeFileSync(
-      path.join(lockDir, "lock.json"),
-      JSON.stringify({ skills: [{ slug: "web-search" }, { slug: "browser-use" }] }),
+    expect(installAllSkills).toHaveBeenCalledWith(
+      ["inferen-sh/skills@web-search", "browser-use/browser-use@browser-use", "anthropics/skills@new-skill"],
+      wsDir,
     )
-    fs.writeFileSync(configPath, JSON.stringify({ agents: { list: [{ id: "director" }] } }))
-    fs.writeFileSync(
-      statePath,
-      JSON.stringify({
-        agents: { director: { version: "2026.3.6", installedAt: "2026-03-01T00:00:00Z" } },
-      }),
-    )
-
-    await agentUpdate("director", {})
-
-    expect(installSkill).toHaveBeenCalledTimes(1)
-    expect(installSkill).toHaveBeenCalledWith("new-skill", wsDir)
-    expect(updateAllSkills).toHaveBeenCalledWith(wsDir)
   })
 
   it("exits when agent is not installed", async () => {
@@ -156,6 +137,8 @@ describe("agentUpdate", () => {
     )
 
     await agentUpdate(undefined, { all: true })
+
+    expect(updateAllSkills).toHaveBeenCalled()
 
     const state = readState()
     expect(state.agents.director.version).toBe("2026.3.7")
