@@ -29,7 +29,11 @@ program
   .description("Manage StoryClaw AI agents")
   .version(pkg.version)
 
-program.command("login").description("Authenticate with StoryClaw").action(login)
+program
+  .command("login")
+  .description("Authenticate with StoryClaw")
+  .option("-t, --token <token>", "Authenticate directly with an sc_token")
+  .action(login)
 program.command("logout").description("Remove stored credentials").action(logout)
 
 const agent = program.command("agent").description("Agent management commands")

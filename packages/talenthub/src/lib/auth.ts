@@ -75,6 +75,23 @@ export type TokenResponse = {
   expires_at: string
 }
 
+/**
+ * Exchange an sc_token (web session cookie) for a CLI-compatible th_* token.
+ */
+export async function exchangeToken(scToken: string): Promise<TokenResponse> {
+  const base = getRegistryBaseUrl()
+  const res = await fetchRetry(`${base}/api/talenthub/auth/token-exchange`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token: scToken }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: "unknown" }))
+    throw new Error(`Token exchange failed (${res.status}): ${body.error ?? "unknown error"}`)
+  }
+  return res.json()
+}
+
 export async function pollForToken(
   deviceCode: string,
   interval: number,

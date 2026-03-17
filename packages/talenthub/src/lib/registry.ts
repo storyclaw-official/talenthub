@@ -1,9 +1,17 @@
-import { getRegistryBaseUrl } from "./auth.js"
+import { getRegistryBaseUrl, readAuth } from "./auth.js"
 import { fetchRetry } from "./fetch.js"
 
 function apiUrl(path: string): string {
   const base = getRegistryBaseUrl().replace(/\/$/, "")
   return `${base}/api/talenthub/registry${path}`
+}
+
+function authHeaders(): Record<string, string> {
+  const auth = readAuth()
+  if (auth?.token) {
+    return { Authorization: `Bearer ${auth.token}` }
+  }
+  return {}
 }
 
 export type CatalogAgent = {
@@ -40,7 +48,7 @@ export type AgentManifest = {
 
 export async function fetchCatalog(): Promise<Catalog> {
   const url = apiUrl("/catalog")
-  const res = await fetchRetry(url)
+  const res = await fetchRetry(url, { headers: authHeaders() })
   if (!res.ok) {
     throw new Error(`Failed to fetch catalog: ${res.status} ${res.statusText}`)
   }
@@ -49,7 +57,7 @@ export async function fetchCatalog(): Promise<Catalog> {
 
 export async function fetchManifest(agentId: string): Promise<AgentManifest> {
   const url = apiUrl(`/${agentId}`)
-  const res = await fetchRetry(url)
+  const res = await fetchRetry(url, { headers: authHeaders() })
   if (!res.ok) {
     throw new Error(`Agent "${agentId}" not found in registry (${res.status})`)
   }
