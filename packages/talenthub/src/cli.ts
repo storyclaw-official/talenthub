@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 import dns from "node:dns"
+import { readFileSync } from "node:fs"
+import { dirname, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 
 // IPv6 is unreachable on many networks (especially behind NAT/China);
 // try IPv4 first to avoid EHOSTUNREACH delays on every fetch.
@@ -16,12 +19,15 @@ import { agentUpdate } from "./commands/agent-update.js"
 import { login } from "./commands/login.js"
 import { logout } from "./commands/logout.js"
 
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const pkg = JSON.parse(readFileSync(resolve(__dirname, "../package.json"), "utf-8"))
+
 const program = new Command()
 
 program
   .name("talenthub")
   .description("Manage StoryClaw AI agents")
-  .version("0.1.0")
+  .version(pkg.version)
 
 program.command("login").description("Authenticate with StoryClaw").action(login)
 program.command("logout").description("Remove stored credentials").action(logout)
