@@ -92,6 +92,22 @@ export async function exchangeToken(scToken: string): Promise<TokenResponse> {
   return res.json()
 }
 
+/**
+ * Verify a th_* CLI token against the registry and return the user_id.
+ */
+export async function verifyToken(token: string): Promise<{ user_id: string }> {
+  const base = getRegistryBaseUrl()
+  const res = await fetchRetry(`${base}/api/talenthub/auth/me`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: "unknown" }))
+    throw new Error(`Token verification failed (${res.status}): ${body.error ?? "unknown error"}`)
+  }
+  return res.json()
+}
+
 export async function pollForToken(
   deviceCode: string,
   interval: number,

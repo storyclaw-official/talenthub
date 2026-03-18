@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process"
-import { readAuth, requestDeviceCode, pollForToken, exchangeToken, writeAuth } from "../lib/auth.js"
+import { readAuth, requestDeviceCode, pollForToken, exchangeToken, verifyToken, writeAuth } from "../lib/auth.js"
 
 function openUrl(url: string): void {
   try {
@@ -16,14 +16,22 @@ function openUrl(url: string): void {
 }
 
 export async function login(options: { token?: string }): Promise<void> {
-  // Direct token exchange: skip device-code flow entirely
   if (options.token) {
-    console.log("Exchanging token...")
     try {
-      const { access_token, user_id, expires_at } = await exchangeToken(options.token)
-      writeAuth({ token: access_token, user_id, expires_at })
-      console.log(`✓ Logged in successfully.`)
-      console.log(`  User ID: ${user_id}`)
+      if (options.token.startsWith("th_")) {
+        console.log("Verifying token...")
+        const { user_id } = await verifyToken(options.token)
+        writeAuth({ token: options.token, user_id, expires_at: "" })
+        console.log(`✓ Logged in successfully.`)
+        console.log(`  User ID: ${user_id}`)
+      } else {
+        // sc_token from web session — exchange for a CLI token
+        console.log("Exchanging token...")
+        const { access_token, user_id, expires_at } = await exchangeToken(options.token)
+        writeAuth({ token: access_token, user_id, expires_at })
+        console.log(`✓ Logged in successfully.`)
+        console.log(`  User ID: ${user_id}`)
+      }
     } catch (err) {
       console.error(`✗ Login failed: ${err instanceof Error ? err.message : err}`)
       process.exit(1)
