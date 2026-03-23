@@ -1,22 +1,39 @@
 import fs from "node:fs"
 import path from "node:path"
+import { verifyToken } from "../lib/auth.js"
 import { installAllSkills } from "../lib/skills.js"
 import { addOrUpdateAgent, findAgentEntry, readConfig, writeConfig } from "../lib/config.js"
 import { fetchCatalog, fetchManifest } from "../lib/registry.js"
 import { resolveWorkspaceDir } from "../lib/paths.js"
 import { markInstalled } from "../lib/state.js"
 
-export async function agentInstall(name: string, options: { force?: boolean }): Promise<void> {
+export async function agentInstall(name: string, options: { force?: boolean; token?: string }): Promise<void> {
+  const token = options.token
+
+  if (token) {
+    if (!token.startsWith("th_")) {
+      console.error("Invalid token format. Token must start with 'th_'.")
+      process.exit(1)
+    }
+    console.log("Verifying token...")
+    try {
+      await verifyToken(token)
+    } catch {
+      console.error("Token verification failed. Please check your token and try again.")
+      process.exit(1)
+    }
+  }
+
   console.log(`Looking up agent "${name}"...`)
 
-  const catalog = await fetchCatalog()
+  const catalog = await fetchCatalog(token)
   if (!catalog.agents[name]) {
     const available = Object.keys(catalog.agents).join(", ")
     console.error(`Agent "${name}" not found. Available: ${available}`)
     process.exit(1)
   }
 
-  const manifest = await fetchManifest(name)
+  const manifest = await fetchManifest(name, token)
   console.log(`Found ${manifest.emoji} ${manifest.name} v${manifest.version} (${manifest.skills.length} skills)`)
 
   const cfg = readConfig()

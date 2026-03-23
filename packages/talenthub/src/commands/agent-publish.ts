@@ -117,6 +117,9 @@ export async function agentPublish(name: string, opts: { dir?: string } = {}): P
     min_openclaw_version: (manifest.minOpenClawVersion as string) || null,
     avatar_url: (manifest.avatarUrl as string) || null,
     is_public: true,
+    ...(manifest.i18n && typeof manifest.i18n === "object"
+      ? { i18n: manifest.i18n }
+      : {}),
   }
 
   console.log(`\nPublishing ${payload.emoji || ""} ${payload.name} v${finalVersion}...`)

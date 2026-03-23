@@ -6,10 +6,10 @@ function apiUrl(path: string): string {
   return `${base}/api/talenthub/registry${path}`
 }
 
-function authHeaders(): Record<string, string> {
-  const auth = readAuth()
-  if (auth?.token) {
-    return { Authorization: `Bearer ${auth.token}` }
+function authHeaders(token?: string): Record<string, string> {
+  const t = token ?? readAuth()?.token
+  if (t) {
+    return { Authorization: `Bearer ${t}` }
   }
   return {}
 }
@@ -46,18 +46,18 @@ export type AgentManifest = {
   files: Record<string, string>
 }
 
-export async function fetchCatalog(): Promise<Catalog> {
+export async function fetchCatalog(token?: string): Promise<Catalog> {
   const url = apiUrl("/catalog")
-  const res = await fetchRetry(url, { headers: authHeaders() })
+  const res = await fetchRetry(url, { headers: authHeaders(token) })
   if (!res.ok) {
     throw new Error(`Failed to fetch catalog: ${res.status} ${res.statusText}`)
   }
   return res.json()
 }
 
-export async function fetchManifest(agentId: string): Promise<AgentManifest> {
+export async function fetchManifest(agentId: string, token?: string): Promise<AgentManifest> {
   const url = apiUrl(`/${agentId}`)
-  const res = await fetchRetry(url, { headers: authHeaders() })
+  const res = await fetchRetry(url, { headers: authHeaders(token) })
   if (!res.ok) {
     throw new Error(`Agent "${agentId}" not found in registry (${res.status})`)
   }

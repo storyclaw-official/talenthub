@@ -42,6 +42,7 @@ agent
   .command("install <name>")
   .description("Install an agent and its skills")
   .option("-f, --force", "Overwrite existing agent", false)
+  .option("-t, --token <token>", "Authenticate with a th_* token for private agents")
   .action(agentInstall)
 
 agent
