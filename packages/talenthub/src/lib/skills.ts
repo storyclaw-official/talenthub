@@ -21,6 +21,18 @@ function resolveSkillsBin(): string {
 
 const SKILLS_BIN = resolveSkillsBin()
 
+/**
+ * Replace `https://github.com/...` URLs with a mirror when TALENTHUB_GITHUB_URL is set.
+ * Example: TALENTHUB_GITHUB_URL=https://gitmirror.com
+ *   https://github.com/owner/repo → https://gitmirror.com/owner/repo
+ */
+function applyGithubMirror(url: string): string {
+  const mirror = process.env.TALENTHUB_GITHUB_URL?.trim()
+  if (!mirror) return url
+  const base = mirror.replace(/\/+$/, "")
+  return url.replace(/^https?:\/\/github\.com/i, base)
+}
+
 // ── Skill spec parsing ───────────────────────────────────────────────────────
 //
 // Manifest entries use "https://github.com/owner/repo@skill-name"
@@ -81,15 +93,20 @@ export function isSkillInstalled(name: string): boolean {
  *
  * Returns the list of skill names that were successfully installed.
  */
-function installSkillsFromRepo(repo: string, skillNames: string[]): string[] {
+function installSkillsFromRepo(repo: string, skillNames: string[], quiet = false): { ok: string[]; error?: string } {
   const skillFlag = skillNames.join(" ")
   try {
-    const cmd = `node ${SKILLS_BIN} add ${repo} --skill ${skillFlag} --agent openclaw -y`
-    execSync(cmd, { stdio: "inherit", cwd: resolveStateDir(), timeout: 300_000 })
-  } catch {
-    console.error(`  Warning: failed to install skills from ${repo}: ${skillNames.join(", ")}`)
+    const cmd = `node ${SKILLS_BIN} add ${applyGithubMirror(repo)} --skill ${skillFlag} --agent openclaw -y`
+    execSync(cmd, { stdio: quiet ? "pipe" : "inherit", cwd: resolveStateDir(), timeout: 300_000 })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    // Extract stderr from ExecSyncError if available
+    const stderr = (err as { stderr?: Buffer })?.stderr?.toString().trim()
+    const detail = stderr || msg
+    if (!quiet) console.error(`  Warning: failed to install skills from ${repo}: ${skillNames.join(", ")}`)
+    return { ok: skillNames.filter((s) => isSkillInstalled(s)), error: detail }
   }
-  return skillNames.filter((s) => isSkillInstalled(s))
+  return { ok: skillNames.filter((s) => isSkillInstalled(s)) }
 }
 
 /**
@@ -108,8 +125,8 @@ export function installSkill(entry: string, workspaceDir: string): boolean {
   }
 
   if (!isSkillInstalled(spec.skill)) {
-    const ok = installSkillsFromRepo(spec.repo, [spec.skill])
-    if (ok.length === 0) return false
+    const result = installSkillsFromRepo(spec.repo, [spec.skill])
+    if (result.ok.length === 0) return false
   }
 
   if (!isSkillInstalled(spec.skill)) {
@@ -152,28 +169,47 @@ function linkSkillToWorkspace(name: string, workspaceDir: string): void {
  * @param skills Array of skill URL strings ("https://github.com/owner/repo@skill")
  * Returns { installed, skipped, failed } counts.
  */
+export type SkillProgressCallback = (event: {
+  name: string
+  repo: string
+  status: "skipped" | "installing" | "done" | "failed"
+  current: number
+  total: number
+  error?: string
+}) => void
+
 export function installAllSkills(
   skills: string[],
   workspaceDir: string,
+  onProgress?: SkillProgressCallback,
+  quiet = false,
 ): { installed: number; skipped: number; failed: number } {
   fs.mkdirSync(resolveStateDir(), { recursive: true })
 
   let installed = 0
   let skipped = 0
   let failed = 0
+  let current = 0
+  const total = skills.length
 
   // Group missing skills by repo so each repo is cloned only once
   const needInstall = new Map<string, string[]>()
+  const skillRepoMap = new Map<string, string>()
 
   for (const entry of skills) {
     const spec = parseSkillSpec(entry)
     if (!spec) {
+      current++
       console.error(`  Warning: invalid skill spec "${entry}" — expected "https://github.com/owner/repo@skill"`)
+      onProgress?.({ name: entry, repo: "", status: "failed", current, total, error: "invalid spec" })
       failed++
       continue
     }
+    skillRepoMap.set(spec.skill, spec.repo)
     if (isSkillInstalled(spec.skill)) {
+      current++
       linkSkillToWorkspace(spec.skill, workspaceDir)
+      onProgress?.({ name: spec.skill, repo: spec.repo, status: "skipped", current, total })
       skipped++
     } else {
       const list = needInstall.get(spec.repo) ?? []
@@ -184,12 +220,26 @@ export function installAllSkills(
 
   // Batch install: one `skills add` per repo
   for (const [repo, skillNames] of needInstall) {
-    const ok = installSkillsFromRepo(repo, skillNames)
-    installed += ok.length
-    failed += skillNames.length - ok.length
+    for (const name of skillNames) {
+      current++
+      onProgress?.({ name, repo, status: "installing", current, total })
+    }
+    // Rewind current so we can report done/failed per skill
+    current -= skillNames.length
 
-    for (const name of ok) {
-      linkSkillToWorkspace(name, workspaceDir)
+    const result = installSkillsFromRepo(repo, skillNames, quiet)
+    const okSet = new Set(result.ok)
+
+    for (const name of skillNames) {
+      current++
+      if (okSet.has(name)) {
+        installed++
+        linkSkillToWorkspace(name, workspaceDir)
+        onProgress?.({ name, repo, status: "done", current, total })
+      } else {
+        failed++
+        onProgress?.({ name, repo, status: "failed", current, total, error: result.error ?? "install failed" })
+      }
     }
   }
 

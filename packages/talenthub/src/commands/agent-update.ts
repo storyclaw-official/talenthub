@@ -1,6 +1,6 @@
 import fs from "node:fs"
 import path from "node:path"
-import { installAllSkills, updateAllSkills, syncSkillLinks } from "../lib/skills.js"
+import { installAllSkills, updateAllSkills } from "../lib/skills.js"
 import { addOrUpdateAgent, readConfig, writeConfig } from "../lib/config.js"
 import { fetchManifest } from "../lib/registry.js"
 import { resolveWorkspaceDir } from "../lib/paths.js"
@@ -36,11 +36,13 @@ async function updateAgent(agentId: string): Promise<boolean> {
   }
 
   // Update config
+  // Write workspace path instead of skills — the gateway discovers skills
+  // from <workspace>/skills/ symlinks that were created during skill install.
   const cfg = readConfig()
   const updatedCfg = addOrUpdateAgent(cfg, {
     id: manifest.id,
     name: manifest.name,
-    skills: manifest.skills,
+    workspace: wsDir,
   })
   writeConfig(updatedCfg)
   markInstalled(manifest.id, manifest.version)
@@ -65,7 +67,7 @@ export async function agentUpdate(name?: string, options?: { all?: boolean }): P
       await updateAgent(u.agentId)
       console.log(`  ✓ ${u.name} updated to ${u.latestVersion}`)
     }
-    console.log("\nRestart the OpenClaw gateway to apply changes.")
+    console.log("\nAll done.")
     return
   }
 
@@ -80,5 +82,5 @@ export async function agentUpdate(name?: string, options?: { all?: boolean }): P
 
   console.log(`Updating agent "${name}"...`)
   await updateAgent(name)
-  console.log(`✓ Agent "${name}" updated. Restart the OpenClaw gateway to apply changes.`)
+  console.log(`✓ Agent "${name}" updated. All done.`)
 }
