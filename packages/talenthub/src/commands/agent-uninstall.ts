@@ -52,7 +52,6 @@ export async function agentUninstall(name: string, options: { yes?: boolean }): 
       (removedBindings > 0 ? ` (${removedBindings} binding(s) cleaned)` : "") +
       ".",
   );
-  console.log("Restart the OpenClaw gateway to apply changes.");
 }
 
 function removeAgentFromConfig(cfg: ReturnType<typeof readConfig>, agentId: string) {
