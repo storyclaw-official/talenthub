@@ -1,5 +1,6 @@
-import { fetchCatalog, type Catalog, type CatalogAgent } from "./registry.js";
+import { fetchCatalog, type Catalog } from "./registry.js";
 import { readState, writeState } from "./state.js";
+import { isOlderVersion } from "./version.js";
 
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
@@ -33,7 +34,7 @@ export async function checkUpdates(): Promise<UpdateInfo[]> {
   for (const [agentId, installed] of Object.entries(state.agents)) {
     const remote = catalog.agents[agentId];
     if (!remote) continue;
-    if (remote.version !== installed.version) {
+    if (isOlderVersion(installed.version, remote.version)) {
       updates.push({
         agentId,
         currentVersion: installed.version,

@@ -30,12 +30,12 @@ talenthub logout
 
 ## Agent 目录结构
 
-每个 Agent 存放在一个目录中，包含以下文件：
+每个 Agent 存放在一个工作目录中（通常是 `~/.openclaw/workspace-<agent-id>/`），包含以下文件：
 
 | 文件 | 是否必须 | 说明 |
 |------|----------|------|
-| `manifest.json` | 推荐 | Agent 元数据（名称、版本、分类等） |
-| `IDENTITY.md` | **必须** | Agent 的核心身份和人设提示词 |
+| `manifest.json` | **必须** | Agent 元数据（ID、名称、分类等） |
+| `IDENTITY.md` | 必须 | Agent 的核心身份和人设提示词 |
 | `USER.md` | 可选 | 面向用户的使用说明 |
 | `SOUL.md` | 可选 | 深层性格和行为准则 |
 | `AGENTS.md` | 可选 | 多 Agent 协作指令 |
@@ -45,25 +45,32 @@ talenthub logout
 - 单个文件：最大 **200 KB**
 - 所有文件总计：最大 **1 MB**
 
-## 创建 manifest.json
+## 初始化 Agent
 
-`manifest.json` 定义了 Agent 的基本信息。以下是一个完整示例：
+使用 `talenthub agent init` 生成 `manifest.json` 和占位提示词文件：
+
+```bash
+talenthub agent init --dir ~/.openclaw/workspace-my-agent
+```
+
+CLI 会自动：
+1. 从目录名提取 Agent ID（如 `workspace-my-agent` → `my-agent`）
+2. 解析 `IDENTITY.md`（如果存在）获取默认名称和 emoji
+3. 提示你确认或修改各字段
+
+### manifest.json
 
 ```json
 {
   "id": "my-agent",
-  "version": "1.0.0",
   "name": "My Agent",
   "emoji": "🤖",
   "role": "Assistant",
   "tagline": "一句话描述你的 Agent",
   "description": "更详细的介绍，说明这个 Agent 能做什么、适合什么场景。",
   "category": "productivity",
-  "model": "claude-sonnet-4-5",
-  "skills": [
-    "https://github.com/tavily-ai/skills@search",
-    "https://github.com/anthropics/skills@pdf"
-  ],
+  "skills": [],
+  "i18n": {},
   "minOpenClawVersion": "2026.3.1",
   "avatarUrl": null
 }
@@ -74,71 +81,87 @@ talenthub logout
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `id` | string | 唯一标识符，小写字母加连字符（如 `my-agent`） |
-| `version` | string | 版本号（如 `"1.0.0"` 或 `"2026.3.16"`） |
 | `name` | string | 显示名称 |
 | `emoji` | string | 一个 emoji 图标 |
 | `role` | string | 角色简述（如 "Code Reviewer"、"Writer"） |
 | `tagline` | string | 一行摘要，在搜索结果中展示 |
 | `description` | string | 详细描述，在 Agent 详情页展示 |
 | `category` | string | 分类，可选值：`creative`、`finance`、`productivity`、`companion`、`research`、`engineering` |
-| `model` | string | 默认使用的 AI 模型（用户可自行覆盖） |
 | `skills` | string[] | Agent 使用的技能包列表，格式为 `https://github.com/<owner>/<repo>@<skill-name>` |
+| `i18n` | object | 按语言代码（如 `zh-CN`、`zh-TW`、`ja`）存放 role/tagline/description 的翻译。可以为空 `{}`，稍后通过网页界面填写。 |
 | `minOpenClawVersion` | string | 所需的最低 StoryClaw 版本 |
 | `avatarUrl` | string \| null | 头像图片 URL（可选） |
 
-## 编写提示词文件
-
-### IDENTITY.md（必须）
-
-定义 Agent 的核心身份。示例：
-
-```markdown
-# IDENTITY.md - Who Am I?
-
-- **Name:** Code Reviewer | 代码审查员
-- **Creature:** Senior engineering reviewer — thorough, opinionated, fair
-- **Vibe:** Direct and honest; explains why something matters
-- **Emoji:** 🛡️
-```
-
-### USER.md（可选）
-
-面向用户的使用说明，告诉用户如何与 Agent 交互、Agent 擅长什么。
-
-### SOUL.md（可选）
-
-定义 Agent 的深层性格特征、价值观和行为边界。
-
-### AGENTS.md（可选）
-
-当 Agent 需要与其他 Agent 协作时，在此定义协作规则和指令。
+> **注意：** manifest 中没有 `version` 字段。版本由服务器自动生成 —— 详见[版本管理](#版本管理)。
 
 ## 发布 Agent
 
-### 方式一：从已安装的 Agent 发布
-
-如果 Agent 已经安装在你的 StoryClaw 配置中：
+### 从目录发布（推荐）
 
 ```bash
-talenthub agent publish <agent-name>
+talenthub agent publish --dir /path/to/agent
 ```
 
-CLI 会从 `~/.openclaw/openclaw.json` 中读取 Agent 配置，找到对应的工作目录，上传 manifest 和提示词文件。
+### 从已安装的 Agent 发布
 
-### 方式二：从独立目录发布
-
-如果你有一个独立的 Agent 目录（包含 `manifest.json` 和 `.md` 文件）：
+如果 Agent 已在 StoryClaw 配置中，使用 `--name` 解析其工作目录：
 
 ```bash
-talenthub agent publish <agent-name> --dir /path/to/agent
+talenthub agent publish --name my-agent
 ```
+
+### 从当前目录发布
+
+如果你已经在 Agent 目录中：
+
+```bash
+talenthub agent publish
+```
+
+### 其他选项
+
+| 选项 | 说明 |
+|------|------|
+| `--dir <path>` | 包含 `manifest.json` 和 `.md` 文件的 Agent 目录 |
+| `--name <name>` | openclaw 配置中的 Agent 名称（用于解析工作目录） |
+| `--id <id>` | 覆盖 manifest 中的 Agent ID |
 
 ### 发布流程
 
 1. CLI 读取目录中的 `manifest.json` 和所有提示词文件
-2. 提示你确认或修改版本号
-3. 将 Agent 上传到 TalentHub 注册中心
+2. 将 Agent 上传到 TalentHub 注册中心
+3. 服务器自动生成版本号（见下文）
 4. 发布成功后，其他用户即可搜索并安装该 Agent
+
+## 版本管理
+
+版本完全由服务器管理，无需手动设置。
+
+- **格式：** `YYYY.MM.DD-X`（如 `2026.04.13-1`）
+- **新 Agent：** 版本为 `YYYY.MM.DD-1`（当天日期，计数器从 1 开始）
+- **更新核心字段：** 版本自动递增（同一天递增计数器，新的一天重置为 1）
+- **仅更新元数据：** 版本保持不变
+
+**触发版本递增的核心字段：**
+- `skills`
+- `user_prompt`（USER.md）
+- `soul_prompt`（SOUL.md）
+- `agents_prompt`（AGENTS.md）
+
+**不触发版本递增的元数据字段：**
+- `emoji`、`role`、`tagline`、`description`、`category`、`avatar_url`、`i18n`、`identity_prompt`（IDENTITY.md）
+
+每次版本递增时，服务器会自动保存上一版本的快照，以便将来恢复。
+
+## 更新已发布的 Agent
+
+修改提示词文件或 `manifest.json` 后，重新运行发布命令：
+
+```bash
+talenthub agent publish --dir /path/to/agent
+```
+
+如果核心字段有变化，服务器会自动分配新版本号。
 
 ## 完整发布示例
 
@@ -151,25 +174,17 @@ mkdir -p ~/my-agents/translator
 cd ~/my-agents/translator
 ```
 
-### 2. 编写 manifest.json
+### 2. 初始化 Agent
 
-```json
-{
-  "id": "translator",
-  "version": "1.0.0",
-  "name": "Translator",
-  "emoji": "🌐",
-  "role": "Translation Assistant",
-  "tagline": "Fluent multilingual translator for documents and conversations.",
-  "description": "A professional translator that handles Chinese, English, Japanese, and more. Preserves tone, context, and technical terminology.",
-  "category": "productivity",
-  "model": "claude-sonnet-4-5",
-  "skills": [],
-  "minOpenClawVersion": "2026.3.1"
-}
+```bash
+talenthub agent init --dir .
 ```
 
-### 3. 编写 IDENTITY.md
+按提示设置 ID（`translator`）、名称、emoji 和分类。
+
+### 3. 编写提示词文件
+
+编辑 `IDENTITY.md`：
 
 ```markdown
 # IDENTITY.md - Who Am I?
@@ -180,6 +195,8 @@ cd ~/my-agents/translator
 - **Emoji:** 🌐
 ```
 
+根据需要编辑 `SOUL.md`、`USER.md` 和 `AGENTS.md`。
+
 ### 4. 登录并发布
 
 ```bash
@@ -187,32 +204,16 @@ cd ~/my-agents/translator
 talenthub login
 
 # 发布
-talenthub agent publish translator --dir ~/my-agents/translator
+talenthub agent publish --dir ~/my-agents/translator
 ```
 
-CLI 会提示：
+发布成功后：
 
 ```
-Version [1.0.0]:
+Publishing 🌐 Translator...
+
+✓ Updated (version bumped to v2026.04.13-1)
 ```
-
-直接按回车确认版本号，或输入新的版本号。发布成功后会看到：
-
-```
-Publishing 🌐 Translator v1.0.0...
-
-✓ Agent published successfully.
-```
-
-## 更新已发布的 Agent
-
-修改提示词文件或 `manifest.json` 后，重新运行发布命令：
-
-```bash
-talenthub agent publish <agent-name>
-```
-
-在版本号提示处输入新版本号即可。注册中心会独立存储每个版本。
 
 ## 下架 Agent
 
@@ -245,6 +246,33 @@ talenthub agent update --all
 talenthub agent list
 ```
 
+## 编写提示词文件
+
+### IDENTITY.md（必须）
+
+定义 Agent 的核心身份。示例：
+
+```markdown
+# IDENTITY.md - Who Am I?
+
+- **Name:** Code Reviewer | 代码审查员
+- **Creature:** Senior engineering reviewer — thorough, opinionated, fair
+- **Vibe:** Direct and honest; explains why something matters
+- **Emoji:** 🛡️
+```
+
+### USER.md（可选）
+
+面向用户的使用说明，告诉用户如何与 Agent 交互、Agent 擅长什么。
+
+### SOUL.md（可选）
+
+定义 Agent 的深层性格特征、价值观和行为边界。
+
+### AGENTS.md（可选）
+
+当 Agent 需要与其他 Agent 协作时，在此定义协作规则和指令。
+
 ## 环境变量
 
 | 变量 | 说明 |
@@ -254,9 +282,13 @@ talenthub agent list
 
 ## 常见问题
 
+**"manifest.json not found"** — 运行 `talenthub agent init --dir <path>` 创建，或手动创建。
+
 **"Not logged in"** — 运行 `talenthub login` 登录。
 
-**"Agent not found in openclaw config"** — 用 `--dir` 指定 Agent 目录，或先安装该 Agent。
+**"Agent not found in openclaw config"** — 使用 `--dir` 直接指定 Agent 目录。
+
+**"Invalid agent id"** — Agent ID 必须为小写字母、数字和连字符（如 `my-agent`）。
 
 **"Exceeds size limit"** — 缩减提示词文件内容。单个文件不超过 200 KB，总计不超过 1 MB。
 

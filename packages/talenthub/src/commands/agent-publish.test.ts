@@ -1,19 +1,9 @@
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import readline from "node:readline"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mockFetch = vi.fn()
-
-vi.mock("node:readline", () => ({
-  default: {
-    createInterface: vi.fn().mockReturnValue({
-      question: (_q: string, cb: (a: string) => void) => cb(""),
-      close: vi.fn(),
-    }),
-  },
-}))
 
 let tmpDir: string
 let configPath: string
@@ -62,7 +52,7 @@ function setupAuth() {
 function setupAgent() {
   fs.writeFileSync(
     configPath,
-    JSON.stringify({ agents: { list: [{ id: "test-agent", name: "Test Agent", model: "claude-sonnet-4-5" }] } }),
+    JSON.stringify({ agents: { list: [{ id: "test-agent", name: "Test Agent" }] } }),
   )
   const wsDir = path.join(tmpDir, ".openclaw", "workspace-test-agent")
   fs.mkdirSync(wsDir, { recursive: true })
@@ -74,10 +64,8 @@ function setupAgent() {
     path.join(wsDir, "manifest.json"),
     JSON.stringify({
       id: "test-agent",
-      version: "1.0.0",
       name: "Test Agent",
       emoji: "🧪",
-      model: "claude-sonnet-4-5",
       category: "productivity",
       skills: ["web-search"],
     }),
@@ -90,33 +78,35 @@ describe("agentPublish", () => {
     const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
       throw new Error("process.exit")
     })
-    await expect(agentPublish("test-agent")).rejects.toThrow("process.exit")
+    await expect(agentPublish({ name: "test-agent" })).rejects.toThrow("process.exit")
     expect(exitSpy).toHaveBeenCalledWith(1)
     exitSpy.mockRestore()
   })
 
-  it("exits when agent not in config", async () => {
+  it("exits when manifest.json not found", async () => {
     setupAuth()
-    fs.writeFileSync(configPath, "{}")
+    // Create dir without manifest.json
+    const wsDir = path.join(tmpDir, "no-manifest")
+    fs.mkdirSync(wsDir, { recursive: true })
 
     const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
       throw new Error("process.exit")
     })
-    await expect(agentPublish("nonexistent")).rejects.toThrow("process.exit")
+    await expect(agentPublish({ dir: wsDir })).rejects.toThrow("process.exit")
     expect(exitSpy).toHaveBeenCalledWith(1)
     exitSpy.mockRestore()
   })
 
   it("publishes agent successfully", async () => {
     setupAuth()
-    setupAgent()
+    const wsDir = setupAgent()
 
     mockFetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ ok: true, status: "pending", message: "Published! Pending review." }),
+      json: () => Promise.resolve({ ok: true, status: "pending", message: "Published!" }),
     })
 
-    await agentPublish("test-agent")
+    await agentPublish({ dir: wsDir })
 
     expect(mockFetch).toHaveBeenCalledTimes(1)
     const call = mockFetch.mock.calls[0]
@@ -128,7 +118,7 @@ describe("agentPublish", () => {
 
   it("handles publish failure", async () => {
     setupAuth()
-    setupAgent()
+    const wsDir = setupAgent()
 
     mockFetch.mockResolvedValue({
       ok: false,
@@ -138,7 +128,7 @@ describe("agentPublish", () => {
     const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
       throw new Error("process.exit")
     })
-    await expect(agentPublish("test-agent")).rejects.toThrow("process.exit")
+    await expect(agentPublish({ dir: wsDir })).rejects.toThrow("process.exit")
     exitSpy.mockRestore()
   })
 })

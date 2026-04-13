@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url"
 dns.setDefaultResultOrder("ipv4first")
 
 import { Command } from "commander"
+import { agentInit } from "./commands/agent-init.js"
 import { agentInstall } from "./commands/agent-install.js"
 import { agentList } from "./commands/agent-list.js"
 import { agentPublish } from "./commands/agent-publish.js"
@@ -39,6 +40,12 @@ program.command("logout").description("Remove stored credentials").action(logout
 const agent = program.command("agent").description("Agent management commands")
 
 agent
+  .command("init")
+  .description("Initialize a new agent with manifest.json and prompt files")
+  .option("-d, --dir <path>", "Target directory (defaults to current directory)")
+  .action(agentInit)
+
+agent
   .command("install <name>")
   .description("Install an agent and its skills")
   .option("-f, --force", "Overwrite existing agent", false)
@@ -50,6 +57,7 @@ agent
   .command("update [name]")
   .description("Update an agent or all agents")
   .option("-a, --all", "Update all installed agents")
+  .option("--json", "Output structured JSONL progress for machine consumption", false)
   .action(agentUpdate)
 
 agent
@@ -69,9 +77,11 @@ agent
   .action(agentSearch)
 
 agent
-  .command("publish <name>")
+  .command("publish")
   .description("Publish a local agent to the registry")
-  .option("-d, --dir <path>", "Agent directory containing manifest.json and .md files")
+  .option("-d, --dir <path>", "Agent directory containing manifest.json and .md files (defaults to current directory)")
+  .option("-n, --name <name>", "Agent name in openclaw config (used to resolve workspace dir)")
+  .option("--id <id>", "Override agent ID from manifest")
   .action(agentPublish)
 
 agent

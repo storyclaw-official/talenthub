@@ -96,6 +96,8 @@ describe("agentUpdate", () => {
     expect(installAllSkills).toHaveBeenCalledWith(
       ["https://github.com/inferen-sh/skills@web-search", "https://github.com/browser-use/browser-use@browser-use", "https://github.com/anthropics/skills@new-skill"],
       wsDir,
+      undefined,
+      false,
     )
   })
 

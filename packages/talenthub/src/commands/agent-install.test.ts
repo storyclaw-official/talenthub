@@ -82,7 +82,7 @@ describe("agentInstall", () => {
     expect(fs.readFileSync(path.join(wsDir, "IDENTITY.md"), "utf-8")).toBe("# Director Identity")
 
     expect(installAllSkills).toHaveBeenCalledTimes(1)
-    expect(installAllSkills).toHaveBeenCalledWith(["https://github.com/inferen-sh/skills@web-search", "https://github.com/browser-use/browser-use@browser-use"], wsDir)
+    expect(installAllSkills).toHaveBeenCalledWith(["https://github.com/inferen-sh/skills@web-search", "https://github.com/browser-use/browser-use@browser-use"], wsDir, undefined, false)
   })
 
   it("exits when agent not found in catalog", async () => {
