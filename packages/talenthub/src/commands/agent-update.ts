@@ -4,7 +4,7 @@ import { installAllSkills, updateAllSkills } from "../lib/skills.js"
 import { addOrUpdateAgent, readConfig, writeConfig } from "../lib/config.js"
 import { fetchManifest } from "../lib/registry.js"
 import { resolveWorkspaceDir } from "../lib/paths.js"
-import { markInstalled, readState } from "../lib/state.js"
+import { markInstalled, readState, toManifestSnapshot } from "../lib/state.js"
 import { checkUpdates } from "../lib/update-check.js"
 
 function jsonl(obj: Record<string, unknown>): void {
@@ -84,7 +84,7 @@ async function updateAgent(agentId: string, json: boolean): Promise<boolean> {
     workspace: wsDir,
   })
   writeConfig(updatedCfg)
-  markInstalled(manifest.id, manifest.version)
+  markInstalled(manifest.id, manifest.version, toManifestSnapshot(manifest))
   if (json) jsonl({ event: "progress", phase: "config", percent: WEIGHT.config })
 
   if (json) {

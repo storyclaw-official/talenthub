@@ -16,7 +16,9 @@ import { agentPublish } from "./commands/agent-publish.js"
 import { agentSearch } from "./commands/agent-search.js"
 import { agentUninstall } from "./commands/agent-uninstall.js"
 import { agentUnpublish } from "./commands/agent-unpublish.js"
+import { agentExport } from "./commands/agent-export.js"
 import { agentUpdate } from "./commands/agent-update.js"
+import { skillsList, skillsAdd, skillsRemove } from "./commands/agent-skills.js"
 import { login } from "./commands/login.js"
 import { logout } from "./commands/logout.js"
 
@@ -50,6 +52,7 @@ agent
   .description("Install an agent and its skills")
   .option("-f, --force", "Overwrite existing agent", false)
   .option("-t, --token <token>", "Authenticate with a th_* token for private agents")
+  .option("--url <url>", "Install from a zip file (file:///path or https://...)")
   .option("--json", "Output structured JSONL progress for machine consumption", false)
   .action(agentInstall)
 
@@ -88,5 +91,33 @@ agent
   .command("unpublish <name>")
   .description("Archive an agent from the registry")
   .action(agentUnpublish)
+
+agent
+  .command("export <agentId>")
+  .description("Export an installed agent to a .zip file")
+  .option("-o, --output <path>", "Output file path (defaults to <agentId>.zip)")
+  .option("--json", "Output structured JSONL for machine consumption", false)
+  .action(agentExport)
+
+const skills = agent.command("skills").description("Manage skills for an installed agent")
+
+skills
+  .command("list <agentId>")
+  .description("List skills for an installed agent")
+  .option("--json", "Output structured JSONL for machine consumption", false)
+  .action(skillsList)
+
+skills
+  .command("add <agentId> <githubUrl>")
+  .description("Add a skill to an installed agent")
+  .option("-f, --force", "Replace existing skill with same name", false)
+  .option("--json", "Output structured JSONL for machine consumption", false)
+  .action(skillsAdd)
+
+skills
+  .command("remove <agentId> <skillName>")
+  .description("Remove a skill from an installed agent")
+  .option("--json", "Output structured JSONL for machine consumption", false)
+  .action(skillsRemove)
 
 program.parse()

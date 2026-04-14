@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "commander": "^13.0.0",
+    "jszip": "^3.10.1",
     "skills": "^1.4.5"
   },
   "devDependencies": {
