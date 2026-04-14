@@ -36,11 +36,13 @@ async function updateAgent(agentId: string, json: boolean): Promise<boolean> {
   }
   fs.mkdirSync(wsDir, { recursive: true })
 
-  // Write agent files from the registry response
+  // Write agent files from the registry response.
+  // Skip IDENTITY.md — users may customize name/avatar locally and
+  // identity_prompt changes don't trigger a version bump.
   log("  Writing agent files...")
   if (manifest.files) {
     for (const [filename, content] of Object.entries(manifest.files)) {
-      if (content) {
+      if (content && filename !== "IDENTITY.md") {
         fs.writeFileSync(path.join(wsDir, filename), content, "utf-8")
       }
     }
