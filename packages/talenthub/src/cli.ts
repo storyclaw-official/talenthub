@@ -16,6 +16,7 @@ import { agentPublish } from "./commands/agent-publish.js"
 import { agentSearch } from "./commands/agent-search.js"
 import { agentUninstall } from "./commands/agent-uninstall.js"
 import { agentUnpublish } from "./commands/agent-unpublish.js"
+import { agentVisibility } from "./commands/agent-visibility.js"
 import { agentExport } from "./commands/agent-export.js"
 import { agentUpdate } from "./commands/agent-update.js"
 import { skillsList, skillsAdd, skillsRemove } from "./commands/agent-skills.js"
@@ -52,7 +53,6 @@ agent
   .description("Install an agent and its skills")
   .option("-f, --force", "Overwrite existing agent", false)
   .option("-t, --token <token>", "Authenticate with a th_* token for private agents")
-  .option("--url <url>", "Install from a zip file (file:///path or https://...)")
   .option("--json", "Output structured JSONL progress for machine consumption", false)
   .action(agentInstall)
 
@@ -85,12 +85,20 @@ agent
   .option("-d, --dir <path>", "Agent directory containing manifest.json and .md files (defaults to current directory)")
   .option("-n, --name <name>", "Agent name in openclaw config (used to resolve workspace dir)")
   .option("--id <id>", "Override agent ID from manifest")
+  .option("--private", "Publish as a private agent (only owner can access)", false)
   .action(agentPublish)
 
 agent
   .command("unpublish <name>")
   .description("Archive an agent from the registry")
   .action(agentUnpublish)
+
+agent
+  .command("visibility <name>")
+  .description("Change an agent's visibility between public and private")
+  .option("--public", "Make the agent public")
+  .option("--private", "Make the agent private (only owner can access)")
+  .action(agentVisibility)
 
 agent
   .command("export <agentId>")

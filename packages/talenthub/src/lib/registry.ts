@@ -44,6 +44,7 @@ export type AgentManifest = {
   skills: string[]
   avatarUrl: string | null
   files: Record<string, string>
+  zip_url?: string
 }
 
 export async function fetchCatalog(token?: string): Promise<Catalog> {

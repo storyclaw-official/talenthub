@@ -1,17 +1,18 @@
 import fs from "node:fs"
 import path from "node:path"
-import { installAllSkills, updateAllSkills } from "../lib/skills.js"
+import JSZip from "jszip"
 import { addOrUpdateAgent, readConfig, writeConfig } from "../lib/config.js"
 import { fetchManifest } from "../lib/registry.js"
 import { resolveWorkspaceDir } from "../lib/paths.js"
-import { markInstalled, readState, toManifestSnapshot } from "../lib/state.js"
+import { markInstalled, readState } from "../lib/state.js"
 import { checkUpdates } from "../lib/update-check.js"
 
 function jsonl(obj: Record<string, unknown>): void {
   process.stdout.write(`${JSON.stringify(obj)}\n`)
 }
 
-const WEIGHT = { manifest: 10, skillsStart: 10, skillsEnd: 80, files: 90, config: 100 }
+const PROMPT_FILES = ["IDENTITY.md", "USER.md", "SOUL.md", "AGENTS.md"]
+const WEIGHT = { manifest: 10, downloadEnd: 50, extractEnd: 90, config: 100 }
 
 async function updateAgent(agentId: string, json: boolean): Promise<boolean> {
   const log = json ? () => {} : console.log.bind(console)
@@ -22,7 +23,7 @@ async function updateAgent(agentId: string, json: boolean): Promise<boolean> {
   if (json) jsonl({
     event: "start",
     agentId: manifest.id, name: manifest.name, emoji: manifest.emoji,
-    version: manifest.version, skillCount: manifest.skills.length,
+    version: manifest.version,
   })
   if (json) jsonl({ event: "progress", phase: "manifest", percent: WEIGHT.manifest })
 
@@ -36,46 +37,65 @@ async function updateAgent(agentId: string, json: boolean): Promise<boolean> {
   }
   fs.mkdirSync(wsDir, { recursive: true })
 
-  // Write agent files from the registry response.
-  // Skip IDENTITY.md — users may customize name/avatar locally and
-  // identity_prompt changes don't trigger a version bump.
-  log("  Writing agent files...")
-  if (manifest.files) {
-    for (const [filename, content] of Object.entries(manifest.files)) {
-      if (content && filename !== "IDENTITY.md") {
-        fs.writeFileSync(path.join(wsDir, filename), content, "utf-8")
+  let skillCount = 0
+
+  if (manifest.zip_url) {
+    // New path: download zip and extract
+    log("  Downloading package...")
+    if (json) jsonl({ event: "progress", phase: "download", percent: 10 })
+
+    const res = await fetch(manifest.zip_url)
+    if (!res.ok) throw new Error(`Failed to download zip: ${res.status}`)
+    const zipBuffer = Buffer.from(await res.arrayBuffer())
+
+    if (json) jsonl({ event: "progress", phase: "download", percent: WEIGHT.downloadEnd })
+
+    log("  Extracting...")
+    const zip = await JSZip.loadAsync(zipBuffer)
+
+    // Write prompt files — skip IDENTITY.md to preserve local customizations
+    for (const filename of PROMPT_FILES) {
+      if (filename === "IDENTITY.md") continue
+      const f = zip.file(filename)
+      if (f) {
+        fs.writeFileSync(path.join(wsDir, filename), await f.async("string"), "utf-8")
       }
     }
-  }
-  if (json) jsonl({ event: "progress", phase: "files", percent: WEIGHT.files })
 
-  // Install any new skills (existing skills are skipped)
-  let installed = 0
-  let failed = 0
-  let skipped = 0
-  const warnings: string[] = []
-  const skillTotal = manifest.skills.length
+    // Extract bundled skills
+    const skillsDir = path.join(wsDir, "skills")
+    const seenSkills = new Set<string>()
 
-  if (skillTotal > 0) {
-    log("  Installing new skills...")
-    const skillWeight = WEIGHT.skillsEnd - WEIGHT.skillsStart
+    for (const [zipPath, zipEntry] of Object.entries(zip.files)) {
+      if (zipEntry.dir || !zipPath.startsWith("skills/")) continue
+      const parts = zipPath.slice("skills/".length).split("/")
+      if (parts.length < 2) continue
+      const skillName = parts[0]
+      const fileName = parts.slice(1).join("/")
 
-    const result = installAllSkills(manifest.skills, wsDir, json ? (evt) => {
-      const percent = WEIGHT.skillsStart + Math.round((evt.current / evt.total) * skillWeight)
-      jsonl({
-        event: "progress", phase: "skills", percent,
-        detail: evt.name, current: evt.current, total: evt.total, status: evt.status,
-      })
-      if (evt.status === "failed") {
-        warnings.push(`${evt.name}: ${evt.error ?? "install failed"}`)
+      if (!seenSkills.has(skillName)) {
+        seenSkills.add(skillName)
+        skillCount++
       }
-    } : undefined, json)
 
-    installed = result.installed
-    failed = result.failed
-    skipped = result.skipped
+      const targetFile = path.join(skillsDir, skillName, fileName)
+      fs.mkdirSync(path.dirname(targetFile), { recursive: true })
+      fs.writeFileSync(targetFile, await zipEntry.async("string"), "utf-8")
+    }
+
+    if (json) jsonl({ event: "progress", phase: "extract", percent: WEIGHT.extractEnd })
   } else {
-    if (json) jsonl({ event: "progress", phase: "skills", percent: WEIGHT.skillsEnd })
+    // Legacy fallback: write files from manifest response
+    // Skip IDENTITY.md to preserve local customizations
+    log("  Writing agent files...")
+    if (manifest.files) {
+      for (const [filename, content] of Object.entries(manifest.files)) {
+        if (content && filename !== "IDENTITY.md") {
+          fs.writeFileSync(path.join(wsDir, filename), content, "utf-8")
+        }
+      }
+    }
+    if (json) jsonl({ event: "progress", phase: "extract", percent: WEIGHT.extractEnd })
   }
 
   // Update config
@@ -86,11 +106,11 @@ async function updateAgent(agentId: string, json: boolean): Promise<boolean> {
     workspace: wsDir,
   })
   writeConfig(updatedCfg)
-  markInstalled(manifest.id, manifest.version, toManifestSnapshot(manifest))
+  markInstalled(manifest.id, manifest.version)
   if (json) jsonl({ event: "progress", phase: "config", percent: WEIGHT.config })
 
   if (json) {
-    jsonl({ event: "done", agentId, success: true, version: manifest.version, installed, skipped, failed, warnings })
+    jsonl({ event: "done", agentId, success: true, version: manifest.version, skillCount })
   }
 
   return true
@@ -107,10 +127,6 @@ export async function agentUpdate(name?: string, options?: { all?: boolean; json
       else log("All agents are up to date.")
       return
     }
-
-    // Update shared skills first
-    log("Updating shared skills...")
-    updateAllSkills()
 
     log(`\nFound ${updates.length} update(s):\n`)
     for (const u of updates) {
@@ -129,9 +145,6 @@ export async function agentUpdate(name?: string, options?: { all?: boolean; json
     else console.error(`Agent "${name}" is not installed. Use "talenthub agent install ${name}" first.`)
     process.exit(1)
   }
-
-  log("Updating shared skills...")
-  updateAllSkills()
 
   log(`Updating agent "${name}"...`)
   await updateAgent(name, json)

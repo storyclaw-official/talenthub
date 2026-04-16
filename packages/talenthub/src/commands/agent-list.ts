@@ -18,11 +18,7 @@ export async function agentList(): Promise<void> {
     catalog = null;
   }
 
-  const header = padRow("Agent", "Version", "Skills", "Status");
-  console.log(header);
-  console.log("-".repeat(header.length));
-
-  for (const [id, info] of agents) {
+  const rows = agents.map(([id, info]) => {
     const remote = catalog?.agents[id];
     const skillCount = remote?.skillCount?.toString() ?? "?";
     let status = "Up to date";
@@ -31,10 +27,20 @@ export async function agentList(): Promise<void> {
     } else if (!remote) {
       status = "Not in registry";
     }
-    console.log(padRow(id, info.version, skillCount, status));
-  }
-}
+    return [id, info.version, skillCount, status] as const;
+  });
 
-function padRow(name: string, version: string, skills: string, status: string): string {
-  return `  ${name.padEnd(16)} ${version.padEnd(14)} ${skills.padEnd(8)} ${status}`;
+  const cols = ["Agent", "Version", "Skills", "Status"] as const;
+  const widths = cols.map((h, i) =>
+    Math.max(h.length, ...rows.map((r) => r[i].length)) + 2,
+  );
+
+  const fmt = (row: readonly string[]) =>
+    "  " + row.map((v, i) => v.padEnd(widths[i])).join("");
+
+  console.log(fmt(cols));
+  console.log("-".repeat(widths.reduce((a, b) => a + b, 2)));
+  for (const row of rows) {
+    console.log(fmt(row));
+  }
 }
