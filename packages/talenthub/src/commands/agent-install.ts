@@ -6,6 +6,7 @@ import { addOrUpdateAgent, findAgentEntry, readConfig, writeConfig } from "../li
 import { fetchManifest } from "../lib/registry.js"
 import { resolveWorkspaceDir } from "../lib/paths.js"
 import { markInstalled } from "../lib/state.js"
+import { scanWorkspaceSkillNames } from "../lib/skills.js"
 
 function jsonl(obj: Record<string, unknown>): void {
   process.stdout.write(`${JSON.stringify(obj)}\n`)
@@ -138,11 +139,13 @@ export async function agentInstall(name: string, options: { force?: boolean; tok
     if (json) jsonl({ event: "progress", phase: "extract", percent: WEIGHT.extractEnd })
   }
 
-  // Update config
+  // Update config — include workspace skill names as the agent's allowlist
+  const skills = scanWorkspaceSkillNames(wsDir)
   const updatedCfg = addOrUpdateAgent(cfg, {
     id: manifest.id,
     name: manifest.name,
     workspace: wsDir,
+    ...(skills.length > 0 ? { skills } : {}),
   })
   writeConfig(updatedCfg)
   markInstalled(manifest.id, manifest.version)

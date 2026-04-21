@@ -5,6 +5,7 @@ import { addOrUpdateAgent, readConfig, writeConfig } from "../lib/config.js"
 import { fetchManifest } from "../lib/registry.js"
 import { resolveWorkspaceDir } from "../lib/paths.js"
 import { markInstalled, readState } from "../lib/state.js"
+import { scanWorkspaceSkillNames } from "../lib/skills.js"
 import { checkUpdates } from "../lib/update-check.js"
 
 function jsonl(obj: Record<string, unknown>): void {
@@ -98,12 +99,14 @@ async function updateAgent(agentId: string, json: boolean): Promise<boolean> {
     if (json) jsonl({ event: "progress", phase: "extract", percent: WEIGHT.extractEnd })
   }
 
-  // Update config
+  // Update config — replace workspace skill allowlist
   const cfg = readConfig()
+  const skills = scanWorkspaceSkillNames(wsDir)
   const updatedCfg = addOrUpdateAgent(cfg, {
     id: manifest.id,
     name: manifest.name,
     workspace: wsDir,
+    ...(skills.length > 0 ? { skills } : {}),
   })
   writeConfig(updatedCfg)
   markInstalled(manifest.id, manifest.version)

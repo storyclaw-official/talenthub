@@ -247,6 +247,78 @@ export function installAllSkills(
 }
 
 /**
+ * Scan an agent workspace for skill directories and return their names.
+ * Reads the `name` field from SKILL.md frontmatter; falls back to directory name.
+ * Scans `{workspaceDir}/skills/` subdirectories.
+ */
+export function scanWorkspaceSkillNames(workspaceDir: string): string[] {
+  const skillsDir = path.join(workspaceDir, "skills")
+  if (!fs.existsSync(skillsDir)) return []
+
+  const names: string[] = []
+  let entries: fs.Dirent[]
+  try {
+    entries = fs.readdirSync(skillsDir, { withFileTypes: true })
+  } catch {
+    return []
+  }
+
+  for (const entry of entries) {
+    if (entry.name.startsWith(".") || entry.name === "node_modules") continue
+    const entryPath = path.join(skillsDir, entry.name)
+
+    // Follow symlinks to check if it's a directory
+    let isDir = entry.isDirectory()
+    if (entry.isSymbolicLink()) {
+      try {
+        isDir = fs.statSync(entryPath).isDirectory()
+      } catch {
+        continue
+      }
+    }
+    if (!isDir) continue
+
+    const skillFile = path.join(entryPath, "SKILL.md")
+    if (!fs.existsSync(skillFile)) continue
+
+    // Read frontmatter name field
+    const name = readSkillName(skillFile) ?? entry.name
+    names.push(name)
+  }
+
+  return names
+}
+
+/**
+ * Read the `name` field from a SKILL.md file's YAML frontmatter.
+ * Returns undefined if the file has no frontmatter or no name field.
+ */
+function readSkillName(skillFilePath: string): string | undefined {
+  let content: string
+  try {
+    content = fs.readFileSync(skillFilePath, "utf-8")
+  } catch {
+    return undefined
+  }
+
+  // Extract YAML frontmatter between --- delimiters
+  if (!content.startsWith("---")) return undefined
+  const endIdx = content.indexOf("\n---", 3)
+  if (endIdx === -1) return undefined
+
+  const block = content.slice(4, endIdx)
+  // Simple line-based YAML parsing for the `name` field
+  for (const line of block.split("\n")) {
+    const match = line.match(/^name:\s*(.+)/)
+    if (match) {
+      const val = match[1].trim().replace(/^["']|["']$/g, "")
+      if (val) return val
+    }
+  }
+  return undefined
+}
+
+/**
  * Update all installed skills via `skills update`.
  */
 export function updateAllSkills(): boolean {
