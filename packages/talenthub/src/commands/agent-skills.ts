@@ -2,7 +2,22 @@ import fs from "node:fs"
 import path from "node:path"
 import { readState, writeState } from "../lib/state.js"
 import { resolveWorkspaceDir } from "../lib/paths.js"
-import { installSkill, isSkillInstalled, parseSkillSpec, skillName } from "../lib/skills.js"
+import {
+  installSkill,
+  isSkillInstalled,
+  parseSkillSpec,
+  scanWorkspaceSkillNames,
+  skillName,
+} from "../lib/skills.js"
+import { addOrUpdateAgent, readConfig, writeConfig } from "../lib/config.js"
+
+function syncAllowlist(agentId: string): void {
+  const wsDir = resolveWorkspaceDir(agentId)
+  const skills = scanWorkspaceSkillNames(wsDir)
+  const cfg = readConfig()
+  const updated = addOrUpdateAgent(cfg, { id: agentId, workspace: wsDir, skills })
+  writeConfig(updated)
+}
 
 function jsonl(obj: Record<string, unknown>): void {
   process.stdout.write(`${JSON.stringify(obj)}\n`)
@@ -107,6 +122,9 @@ export async function skillsAdd(agentId: string, githubUrl: string, options: { j
   }
   writeState(state)
 
+  // Sync openclaw allowlist (config.agents.list[].skills) so the runtime actually loads it.
+  syncAllowlist(agentId)
+
   if (json) jsonl({ event: "done", agentId, skill: spec.skill, url: githubUrl, action: existing ? "replaced" : "added" })
   else log(`✓ Skill "${spec.skill}" ${existing ? "replaced" : "added"} for agent "${agentId}".`)
 }
@@ -152,6 +170,9 @@ export async function skillsRemove(agentId: string, name: string, options: { jso
   // Update manifest.skills in talenthub.json
   agent.manifest.skills.splice(matchIdx, 1)
   writeState(state)
+
+  // Sync openclaw allowlist so the runtime stops loading the removed skill.
+  syncAllowlist(agentId)
 
   if (json) jsonl({ event: "done", agentId, skill: name, url: removedUrl, action: "removed" })
   else console.log(`✓ Skill "${name}" removed from agent "${agentId}".`)

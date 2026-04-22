@@ -2,6 +2,7 @@ import { execSync } from "node:child_process"
 import fs from "node:fs"
 import path from "node:path"
 import { createRequire } from "node:module"
+import JSZip from "jszip"
 import { resolveStateDir } from "./paths.js"
 
 /**
@@ -300,14 +301,19 @@ function readSkillName(skillFilePath: string): string | undefined {
   } catch {
     return undefined
   }
+  return parseSkillNameFromContent(content)
+}
 
-  // Extract YAML frontmatter between --- delimiters
+/**
+ * Parse the `name` field from SKILL.md content (YAML frontmatter).
+ * Returns undefined if no frontmatter or no name field.
+ */
+function parseSkillNameFromContent(content: string): string | undefined {
   if (!content.startsWith("---")) return undefined
   const endIdx = content.indexOf("\n---", 3)
   if (endIdx === -1) return undefined
 
   const block = content.slice(4, endIdx)
-  // Simple line-based YAML parsing for the `name` field
   for (const line of block.split("\n")) {
     const match = line.match(/^name:\s*(.+)/)
     if (match) {
@@ -316,6 +322,156 @@ function readSkillName(skillFilePath: string): string | undefined {
     }
   }
   return undefined
+}
+
+// ── Install from zip URL (China-friendly path) ───────────────────────────────
+
+export type ZipInstallPhase = "download" | "extract" | "install"
+export type ZipInstallProgressCallback = (event: { phase: ZipInstallPhase; percent: number }) => void
+
+function assertSafeSkillName(name: string): void {
+  if (!name || name.includes("/") || name.includes("\\") || name.startsWith(".") || name.length > 100) {
+    throw new Error(`Invalid skill name: "${name}"`)
+  }
+}
+
+/**
+ * Find the SKILL.md path inside a zip. Handles:
+ *   - SKILL.md at root
+ *   - <wrapperDir>/SKILL.md (single wrapper, e.g. github tarball format)
+ * Returns the zip path of SKILL.md, or undefined if none found.
+ * When multiple SKILL.md files exist, returns the shallowest one.
+ */
+function findSkillMdPath(zip: JSZip): string | undefined {
+  let best: string | undefined
+  let bestDepth = Infinity
+  for (const zipPath of Object.keys(zip.files)) {
+    if (zip.files[zipPath].dir) continue
+    const basename = path.posix.basename(zipPath)
+    if (basename !== "SKILL.md") continue
+    const depth = zipPath.split("/").length
+    if (depth < bestDepth) {
+      best = zipPath
+      bestDepth = depth
+    }
+  }
+  return best
+}
+
+function skillNameFromUrl(url: string): { fromQuery?: string; fromFilename?: string } {
+  try {
+    const u = new URL(url)
+    const fromQuery = u.searchParams.get("skill") || undefined
+    const rawBase = path.posix.basename(u.pathname)
+    const fromFilename = rawBase.replace(/\.zip$/i, "") || undefined
+    return { fromQuery, fromFilename }
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * Download a zip from URL and install it directly into the agent workspace.
+ * Normalizes zip structure (strips single wrapper dir), reads skill name from
+ * SKILL.md frontmatter (or falls back to URL hints), and extracts all files
+ * to `{workspaceDir}/skills/<name>/`. No shared install, no symlink — this
+ * matches the bulk `agent install` pattern where each agent's workspace is
+ * self-contained.
+ *
+ * Returns the resolved skill name on success.
+ */
+export async function installSkillFromZip(
+  zipUrl: string,
+  workspaceDir: string,
+  options: { force?: boolean; onProgress?: ZipInstallProgressCallback } = {},
+): Promise<{ skillName: string }> {
+  const onProgress = options.onProgress ?? (() => {})
+
+  onProgress({ phase: "download", percent: 5 })
+  const res = await fetch(zipUrl)
+  if (!res.ok) throw new Error(`Failed to download zip: ${res.status} ${res.statusText}`)
+  const zipBuffer = Buffer.from(await res.arrayBuffer())
+  onProgress({ phase: "download", percent: 50 })
+
+  const zip = await JSZip.loadAsync(zipBuffer)
+
+  const skillMdPath = findSkillMdPath(zip)
+  if (!skillMdPath) throw new Error("Zip does not contain SKILL.md")
+
+  // Determine prefix to strip (everything up through SKILL.md's parent dir).
+  const prefix = skillMdPath === "SKILL.md" ? "" : skillMdPath.slice(0, skillMdPath.lastIndexOf("/") + 1)
+
+  // Resolve skill name: frontmatter > ?skill= > wrapper dir name > filename
+  const skillMdContent = await zip.file(skillMdPath)!.async("string")
+  const fromFrontmatter = parseSkillNameFromContent(skillMdContent)
+  const fromUrl = skillNameFromUrl(zipUrl)
+  const fromWrapper = prefix ? prefix.replace(/\/$/, "").split("/").pop() : undefined
+  const skillName =
+    fromFrontmatter || fromUrl.fromQuery || fromWrapper || fromUrl.fromFilename
+  if (!skillName) throw new Error("Could not determine skill name from zip")
+  assertSafeSkillName(skillName)
+
+  const targetDir = path.join(workspaceDir, "skills", skillName)
+  if (fs.existsSync(targetDir)) {
+    if (!options.force) {
+      onProgress({ phase: "extract", percent: 90 })
+      onProgress({ phase: "install", percent: 100 })
+      return { skillName }
+    }
+    // If an existing symlink points into the legacy shared location, just
+    // unlink it; otherwise remove the directory recursively.
+    const stat = fs.lstatSync(targetDir)
+    if (stat.isSymbolicLink()) fs.unlinkSync(targetDir)
+    else fs.rmSync(targetDir, { recursive: true, force: true })
+  }
+  fs.mkdirSync(targetDir, { recursive: true })
+
+  // Extract all files under prefix directly into the workspace skills dir.
+  const fileEntries = Object.entries(zip.files).filter(
+    ([p, e]) => !e.dir && (prefix ? p.startsWith(prefix) : true),
+  )
+  onProgress({ phase: "extract", percent: 55 })
+  let extracted = 0
+  for (const [zipPath, entry] of fileEntries) {
+    const relPath = prefix ? zipPath.slice(prefix.length) : zipPath
+    if (!relPath) continue
+    // Guard against path traversal inside the zip.
+    if (relPath.includes("..")) continue
+    const target = path.join(targetDir, relPath)
+    fs.mkdirSync(path.dirname(target), { recursive: true })
+    const content = await entry.async("nodebuffer")
+    fs.writeFileSync(target, content)
+    extracted++
+    if (fileEntries.length > 0) {
+      const pct = 55 + Math.round((extracted / fileEntries.length) * 35)
+      onProgress({ phase: "extract", percent: pct })
+    }
+  }
+  onProgress({ phase: "extract", percent: 90 })
+  onProgress({ phase: "install", percent: 100 })
+
+  return { skillName }
+}
+
+/**
+ * Remove a skill from an agent workspace. Handles both the direct-install
+ * layout (a real directory) and legacy symlinks into shared installs.
+ * Returns true if anything was removed.
+ */
+export function removeSkillFromWorkspace(name: string, workspaceDir: string): boolean {
+  const target = path.join(workspaceDir, "skills", name)
+  if (!fs.existsSync(target)) return false
+  try {
+    const stat = fs.lstatSync(target)
+    if (stat.isSymbolicLink()) {
+      fs.unlinkSync(target)
+    } else {
+      fs.rmSync(target, { recursive: true, force: true })
+    }
+    return true
+  } catch {
+    return false
+  }
 }
 
 /**

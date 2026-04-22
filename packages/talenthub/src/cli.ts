@@ -58,8 +58,11 @@ agent
 
 agent
   .command("update [name]")
-  .description("Update an agent or all agents")
+  .description("Update an agent, or add/remove a single skill")
   .option("-a, --all", "Update all installed agents")
+  .option("--add-skill <zipUrl>", "Install a skill into this agent from a zip URL")
+  .option("--remove-skill <skillName>", "Remove a skill from this agent")
+  .option("-f, --force", "Replace existing skill with same name (used with --add-skill)", false)
   .option("--json", "Output structured JSONL progress for machine consumption", false)
   .action(agentUpdate)
 

@@ -4,8 +4,13 @@ import JSZip from "jszip"
 import { addOrUpdateAgent, readConfig, writeConfig } from "../lib/config.js"
 import { fetchManifest } from "../lib/registry.js"
 import { resolveWorkspaceDir } from "../lib/paths.js"
-import { markInstalled, readState } from "../lib/state.js"
-import { scanWorkspaceSkillNames } from "../lib/skills.js"
+import { markInstalled, readState, writeState } from "../lib/state.js"
+import {
+  scanWorkspaceSkillNames,
+  installSkillFromZip,
+  removeSkillFromWorkspace,
+  skillName as extractSkillName,
+} from "../lib/skills.js"
 import { checkUpdates } from "../lib/update-check.js"
 
 function jsonl(obj: Record<string, unknown>): void {
@@ -119,9 +124,160 @@ async function updateAgent(agentId: string, json: boolean): Promise<boolean> {
   return true
 }
 
-export async function agentUpdate(name?: string, options?: { all?: boolean; json?: boolean }): Promise<void> {
+// Skill weight: download 5→50, extract 50→90, install 90→100 (matches agent-install).
+const SKILL_WEIGHT = { download: 50, extract: 90, install: 100 }
+
+function syncAllowlistForAgent(agentId: string): number {
+  const wsDir = resolveWorkspaceDir(agentId)
+  const skills = scanWorkspaceSkillNames(wsDir)
+  const cfg = readConfig()
+  // Preserve existing agent metadata — addOrUpdateAgent spreads the entry into
+  // the existing one, so we only need to supply id + the skills we want to write.
+  const updated = addOrUpdateAgent(cfg, {
+    id: agentId,
+    workspace: wsDir,
+    skills,
+  })
+  writeConfig(updated)
+  return skills.length
+}
+
+async function agentAddSkill(
+  agentId: string,
+  zipUrl: string,
+  options: { force?: boolean; json?: boolean },
+): Promise<void> {
+  const json = options.json === true
+  const log = json ? () => {} : console.log.bind(console)
+
+  const state = readState()
+  const agent = state.agents[agentId]
+  if (!agent) {
+    if (json) jsonl({ event: "error", message: `Agent "${agentId}" is not installed` })
+    else console.error(`Agent "${agentId}" is not installed.`)
+    process.exit(1)
+  }
+
+  const wsDir = resolveWorkspaceDir(agentId)
+
+  if (json) jsonl({ event: "start", agentId, action: "add-skill" })
+  log(`Adding skill from ${zipUrl} for agent "${agentId}"...`)
+
+  try {
+    const result = await installSkillFromZip(zipUrl, wsDir, {
+      force: options.force === true,
+      onProgress: (evt) => {
+        if (json) jsonl({ event: "progress", phase: evt.phase, percent: evt.percent })
+      },
+    })
+
+    // Update talenthub.json manifest.skills list
+    if (agent.manifest) {
+      const existingIdx = agent.manifest.skills.findIndex(
+        (s) => extractSkillName(s) === result.skillName,
+      )
+      if (existingIdx >= 0) {
+        agent.manifest.skills[existingIdx] = zipUrl
+      } else {
+        agent.manifest.skills.push(zipUrl)
+      }
+      writeState(state)
+    }
+
+    // Sync openclaw allowlist (scan workspace + write config.agents.list[].skills)
+    syncAllowlistForAgent(agentId)
+    if (json) jsonl({ event: "progress", phase: "install", percent: SKILL_WEIGHT.install })
+
+    if (json) jsonl({ event: "done", agentId, skill: result.skillName, action: "added", success: true })
+    else log(`✓ Skill "${result.skillName}" added for agent "${agentId}".`)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    if (json) jsonl({ event: "error", message })
+    else console.error(`Failed to add skill: ${message}`)
+    process.exit(1)
+  }
+}
+
+async function agentRemoveSkill(
+  agentId: string,
+  skillNameArg: string,
+  options: { json?: boolean },
+): Promise<void> {
+  const json = options.json === true
+  const log = json ? () => {} : console.log.bind(console)
+
+  const state = readState()
+  const agent = state.agents[agentId]
+  if (!agent) {
+    if (json) jsonl({ event: "error", message: `Agent "${agentId}" is not installed` })
+    else console.error(`Agent "${agentId}" is not installed.`)
+    process.exit(1)
+  }
+
+  const wsDir = resolveWorkspaceDir(agentId)
+
+  if (json) jsonl({ event: "start", agentId, action: "remove-skill" })
+  log(`Removing skill "${skillNameArg}" from agent "${agentId}"...`)
+
+  try {
+    removeSkillFromWorkspace(skillNameArg, wsDir)
+
+    // Drop matching entry from talenthub.json manifest.skills[]
+    if (agent.manifest) {
+      const matchIdx = agent.manifest.skills.findIndex(
+        (s) => extractSkillName(s) === skillNameArg,
+      )
+      if (matchIdx >= 0) {
+        agent.manifest.skills.splice(matchIdx, 1)
+        writeState(state)
+      }
+    }
+
+    // Sync allowlist
+    syncAllowlistForAgent(agentId)
+
+    if (json) jsonl({ event: "done", agentId, skill: skillNameArg, action: "removed", success: true })
+    else log(`✓ Skill "${skillNameArg}" removed from agent "${agentId}".`)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    if (json) jsonl({ event: "error", message })
+    else console.error(`Failed to remove skill: ${message}`)
+    process.exit(1)
+  }
+}
+
+export async function agentUpdate(
+  name?: string,
+  options?: {
+    all?: boolean
+    json?: boolean
+    addSkill?: string
+    removeSkill?: string
+    force?: boolean
+  },
+): Promise<void> {
   const json = options?.json === true
   const log = json ? () => {} : console.log.bind(console)
+
+  // Skill-level operations on an existing agent.
+  if (options?.addSkill || options?.removeSkill) {
+    if (!name) {
+      if (json) jsonl({ event: "error", message: "Agent id required for --add-skill / --remove-skill" })
+      else console.error("Agent id required when using --add-skill or --remove-skill.")
+      process.exit(1)
+    }
+    if (options.addSkill && options.removeSkill) {
+      if (json) jsonl({ event: "error", message: "--add-skill and --remove-skill are mutually exclusive" })
+      else console.error("--add-skill and --remove-skill are mutually exclusive.")
+      process.exit(1)
+    }
+    if (options.addSkill) {
+      await agentAddSkill(name, options.addSkill, { force: options.force, json })
+      return
+    }
+    await agentRemoveSkill(name, options.removeSkill!, { json })
+    return
+  }
 
   if (options?.all || !name) {
     const updates = await checkUpdates()
