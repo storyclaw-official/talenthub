@@ -41,14 +41,11 @@ talenthub agent install <agent-name>
 | `talenthub agent unpublish <name>` | Archive an agent from the registry |
 | `talenthub agent visibility <name>` | Toggle between public and private (`--public` / `--private`) |
 | `talenthub agent install <name>` | Install an agent with bundled skills |
-| `talenthub agent update [name]` | Update an agent or all agents (`--all`, `--json`) |
+| `talenthub agent update [name]` | Update an agent or all (`--all`, `--json`), or manage its skills (`--add-skill <zipUrl>`, `--remove-skill <name>`, `--force`) |
 | `talenthub agent uninstall <name>` | Remove an installed agent |
 | `talenthub agent list` | List installed agents and check for updates |
 | `talenthub agent search [query]` | Browse available agents |
 | `talenthub agent export <id>` | Export an installed agent to a `.zip` file |
-| `talenthub agent skills list <id>` | List skills for an installed agent |
-| `talenthub agent skills add <id> <url>` | Add a skill to an installed agent |
-| `talenthub agent skills remove <id> <name>` | Remove a skill from an installed agent |
 
 ## Agent Structure
 
@@ -251,14 +248,11 @@ talenthub agent install <agent-name>
 | `talenthub agent unpublish <name>` | 下架 Agent |
 | `talenthub agent visibility <name>` | 切换公开/私密（`--public` / `--private`） |
 | `talenthub agent install <name>` | 安装 Agent（包含打包的技能） |
-| `talenthub agent update [name]` | 更新 Agent（`--all` 更新全部，`--json` 结构化输出） |
+| `talenthub agent update [name]` | 更新 Agent（`--all` 更新全部，`--json` 结构化输出），或管理技能（`--add-skill <zipUrl>`、`--remove-skill <name>`、`--force`） |
 | `talenthub agent uninstall <name>` | 卸载 Agent |
 | `talenthub agent list` | 列出已安装的 Agent |
 | `talenthub agent search [query]` | 搜索可用 Agent |
 | `talenthub agent export <id>` | 将已安装的 Agent 导出为 `.zip` 文件 |
-| `talenthub agent skills list <id>` | 列出已安装 Agent 的技能 |
-| `talenthub agent skills add <id> <url>` | 为已安装 Agent 添加技能 |
-| `talenthub agent skills remove <id> <name>` | 从已安装 Agent 移除技能 |
 
 ### Agent 目录结构
 

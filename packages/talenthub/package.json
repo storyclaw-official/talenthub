@@ -1,6 +1,6 @@
 {
   "name": "@storyclaw/talenthub",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "CLI tool to manage StoryClaw AI agents",
   "type": "module",
   "bin": {

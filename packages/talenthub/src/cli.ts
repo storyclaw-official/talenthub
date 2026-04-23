@@ -19,7 +19,6 @@ import { agentUnpublish } from "./commands/agent-unpublish.js"
 import { agentVisibility } from "./commands/agent-visibility.js"
 import { agentExport } from "./commands/agent-export.js"
 import { agentUpdate } from "./commands/agent-update.js"
-import { skillsList, skillsAdd, skillsRemove } from "./commands/agent-skills.js"
 import { login } from "./commands/login.js"
 import { logout } from "./commands/logout.js"
 
@@ -109,26 +108,5 @@ agent
   .option("-o, --output <path>", "Output file path (defaults to <agentId>.zip)")
   .option("--json", "Output structured JSONL for machine consumption", false)
   .action(agentExport)
-
-const skills = agent.command("skills").description("Manage skills for an installed agent")
-
-skills
-  .command("list <agentId>")
-  .description("List skills for an installed agent")
-  .option("--json", "Output structured JSONL for machine consumption", false)
-  .action(skillsList)
-
-skills
-  .command("add <agentId> <githubUrl>")
-  .description("Add a skill to an installed agent")
-  .option("-f, --force", "Replace existing skill with same name", false)
-  .option("--json", "Output structured JSONL for machine consumption", false)
-  .action(skillsAdd)
-
-skills
-  .command("remove <agentId> <skillName>")
-  .description("Remove a skill from an installed agent")
-  .option("--json", "Output structured JSONL for machine consumption", false)
-  .action(skillsRemove)
 
 program.parse()
