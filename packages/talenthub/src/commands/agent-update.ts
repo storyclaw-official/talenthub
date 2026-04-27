@@ -4,7 +4,7 @@ import JSZip from "jszip"
 import { addOrUpdateAgent, readConfig, writeConfig } from "../lib/config.js"
 import { fetchManifest } from "../lib/registry.js"
 import { resolveWorkspaceDir } from "../lib/paths.js"
-import { markInstalled, readState, writeState } from "../lib/state.js"
+import { findAgent, markInstalled, readState, writeState } from "../lib/state.js"
 import {
   scanWorkspaceSkillNames,
   installSkillFromZip,
@@ -150,13 +150,15 @@ async function agentAddSkill(
   const json = options.json === true
   const log = json ? () => {} : console.log.bind(console)
 
-  const state = readState()
-  const agent = state.agents[agentId]
-  if (!agent) {
+  // Falls back to on-disk workspace lookup when state is missing the agent
+  // (e.g. the openclaw runtime default "main" agent).
+  const found = findAgent(agentId)
+  if (!found) {
     if (json) jsonl({ event: "error", message: `Agent "${agentId}" is not installed` })
     else console.error(`Agent "${agentId}" is not installed.`)
     process.exit(1)
   }
+  const { state, agent } = found
 
   const wsDir = resolveWorkspaceDir(agentId)
 
@@ -206,13 +208,14 @@ async function agentRemoveSkill(
   const json = options.json === true
   const log = json ? () => {} : console.log.bind(console)
 
-  const state = readState()
-  const agent = state.agents[agentId]
-  if (!agent) {
+  // Falls back to on-disk workspace lookup when state is missing the agent.
+  const found = findAgent(agentId)
+  if (!found) {
     if (json) jsonl({ event: "error", message: `Agent "${agentId}" is not installed` })
     else console.error(`Agent "${agentId}" is not installed.`)
     process.exit(1)
   }
+  const { state, agent } = found
 
   const wsDir = resolveWorkspaceDir(agentId)
 

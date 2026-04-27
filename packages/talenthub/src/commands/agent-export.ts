@@ -1,6 +1,6 @@
 import fs from "node:fs"
 import path from "node:path"
-import { readState } from "../lib/state.js"
+import { findAgent } from "../lib/state.js"
 import { resolveWorkspaceDir } from "../lib/paths.js"
 import { readAgentDir, buildAgentZip } from "../lib/agent-zip.js"
 
@@ -11,14 +11,14 @@ function jsonl(obj: Record<string, unknown>): void {
 export async function agentExport(agentId: string, options: { output?: string; json?: boolean }): Promise<void> {
   const json = options.json === true
   const log = json ? () => {} : console.log.bind(console)
-  const state = readState()
-  const agent = state.agents[agentId]
-
-  if (!agent) {
+  // Falls back to on-disk workspace lookup when state is missing the agent.
+  const found = findAgent(agentId)
+  if (!found) {
     if (json) jsonl({ event: "error", message: `Agent "${agentId}" is not installed` })
     else console.error(`Agent "${agentId}" is not installed.`)
     process.exit(1)
   }
+  const { agent } = found
 
   const wsDir = resolveWorkspaceDir(agentId)
   if (!fs.existsSync(wsDir)) {
