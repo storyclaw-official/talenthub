@@ -77,6 +77,13 @@ export function readAgentDir(dir: string): AgentDirContents {
       const files: Record<string, string> = {}
       const readDir = (dir: string, prefix: string) => {
         for (const file of fs.readdirSync(dir)) {
+          // Skip dotfiles. The big one we MUST exclude is `.auth` — the
+          // workspace-reporter skill writes a per-agent CloudFront-signing
+          // key there at install time, and including it in a published or
+          // exported agent zip would leak that key to anyone who installs
+          // the resulting catalog entry. Same blanket filter incidentally
+          // keeps editor cruft (.DS_Store, .swp) out of the zip.
+          if (file.startsWith(".")) continue
           const fullPath = path.join(dir, file)
           if (fs.statSync(fullPath).isDirectory()) {
             readDir(fullPath, prefix ? `${prefix}/${file}` : file)
