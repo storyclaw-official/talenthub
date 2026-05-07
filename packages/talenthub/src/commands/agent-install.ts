@@ -17,6 +17,38 @@ const WEIGHT = { manifest: 5, downloadStart: 5, downloadEnd: 50, extractEnd: 90,
 
 const PROMPT_FILES = ["IDENTITY.md", "USER.md", "SOUL.md", "AGENTS.md"]
 
+async function fetchZipWithRetry(zipUrl: string, log: (...args: unknown[]) => void): Promise<Buffer> {
+  const MAX_ATTEMPTS = 4
+  const PER_ATTEMPT_MS = 20_000
+  let lastErr: unknown
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(zipUrl, { signal: AbortSignal.timeout(PER_ATTEMPT_MS) })
+      if (!res.ok) {
+        if (res.status >= 400 && res.status < 500) {
+          throw new Error(`Failed to download zip: ${res.status} ${res.statusText}`)
+        }
+        throw new Error(`HTTP ${res.status} ${res.statusText}`)
+      }
+      return Buffer.from(await res.arrayBuffer())
+    } catch (err) {
+      lastErr = err
+      const code = (err as { cause?: { code?: string }; code?: string })?.cause?.code
+        ?? (err as { code?: string })?.code
+      const retryable = code === "ETIMEDOUT" || code === "ENETUNREACH"
+        || code === "ECONNRESET" || code === "ECONNREFUSED" || code === "EAI_AGAIN"
+        || code === "UND_ERR_CONNECT_TIMEOUT" || code === "UND_ERR_SOCKET"
+        || (err instanceof Error && err.name === "TimeoutError")
+        || (err instanceof Error && err.message.startsWith("HTTP 5"))
+      if (!retryable || attempt === MAX_ATTEMPTS) break
+      const delay = Math.min(2_000 * 2 ** (attempt - 1), 8_000)
+      log(`Download failed (${code ?? (err as Error)?.message ?? "unknown"}), retrying in ${delay}ms (${attempt}/${MAX_ATTEMPTS - 1})...`)
+      await new Promise((r) => setTimeout(r, delay))
+    }
+  }
+  throw new Error(`Failed to download zip after ${MAX_ATTEMPTS} attempts. Check network connectivity.`, { cause: lastErr })
+}
+
 async function downloadAndExtractZip(
   zipUrl: string,
   wsDir: string,
@@ -26,9 +58,7 @@ async function downloadAndExtractZip(
   log("Downloading package...")
   if (json) jsonl({ event: "progress", phase: "download", percent: WEIGHT.downloadStart })
 
-  const res = await fetch(zipUrl)
-  if (!res.ok) throw new Error(`Failed to download zip: ${res.status} ${res.statusText}`)
-  const zipBuffer = Buffer.from(await res.arrayBuffer())
+  const zipBuffer = await fetchZipWithRetry(zipUrl, log)
 
   if (json) jsonl({ event: "progress", phase: "download", percent: WEIGHT.downloadEnd })
 
