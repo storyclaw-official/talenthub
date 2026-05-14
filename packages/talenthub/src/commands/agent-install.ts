@@ -15,7 +15,19 @@ function jsonl(obj: Record<string, unknown>): void {
 // Weight breakdown: manifest 0→5%, download 5→50%, extract 50→90%, config 90→100%
 const WEIGHT = { manifest: 5, downloadStart: 5, downloadEnd: 50, extractEnd: 90, config: 100 }
 
-const PROMPT_FILES = ["IDENTITY.md", "USER.md", "SOUL.md", "AGENTS.md"]
+// Receiver-side brain file list. Matches agent-zip.ts PROMPT_FILES
+// so every brain file in the exported zip lands on disk at install
+// time.
+const PROMPT_FILES = [
+  "AGENTS.md",
+  "BOOTSTRAP.md",
+  "EVOLUTION.md",
+  "HEARTBEAT.md",
+  "IDENTITY.md",
+  "SOUL.md",
+  "TOOLS.md",
+  "USER.md",
+]
 
 async function fetchZipWithRetry(zipUrl: string, log: (...args: unknown[]) => void): Promise<Buffer> {
   const MAX_ATTEMPTS = 4

@@ -2,7 +2,42 @@ import fs from "node:fs"
 import path from "node:path"
 import JSZip from "jszip"
 
-const PROMPT_FILES = ["IDENTITY.md", "USER.md", "SOUL.md", "AGENTS.md"]
+// Brain files included in every exported / published agent zip.
+// Mirrors the storyclaw workspace validator's accepted brain-file
+// set so the agent doesn't have to retry uploads.
+const PROMPT_FILES = [
+  "AGENTS.md",
+  "BOOTSTRAP.md",
+  "EVOLUTION.md",
+  "HEARTBEAT.md",
+  "IDENTITY.md",
+  "SOUL.md",
+  "TOOLS.md",
+  "USER.md",
+]
+
+// Skill directories we never ship. `storyclaw-workspace-reporter` is
+// the per-installation API client for the originating agent; its
+// `.auth` is already filtered (dotfile), but the surrounding
+// scaffolding is also scoped — receivers re-install it cleanly with
+// their own key.
+const SKIPPED_SKILL_DIRS = new Set<string>(["storyclaw-workspace-reporter"])
+
+// File patterns we filter inside the skills walk. Mirrors the
+// storyclaw workspace validator's BLACKLIST_PATTERNS so the agent
+// doesn't have to retry --exclude'ing them. Matches against the
+// zip-relative key (forward-slash separated).
+const SKILL_FILE_BLACKLIST: RegExp[] = [
+  /(?:^|\/)__pycache__\//,
+  /\.pyc$/i,
+  /(?:^|\/)secrets?\//,
+  /(?:^|\/)id_rsa(?:\.pub)?$/,
+  /\.pem$/i,
+  /\.p12$/i,
+  // Generated lockfile; talenthub install rebuilds it anyway.
+  /(?:^|\/)skills-lock\.json$/,
+]
+
 const MAX_FILE_SIZE = 200 * 1024
 const MAX_TOTAL_PROMPT_SIZE = 1024 * 1024
 const MAX_ZIP_SIZE = 50 * 1024 * 1024 // 50MB
@@ -65,6 +100,8 @@ export function readAgentDir(dir: string): AgentDirContents {
   const skillsDir = path.join(dir, "skills")
   if (fs.existsSync(skillsDir)) {
     for (const entry of fs.readdirSync(skillsDir)) {
+      // Per-installation skills must not be bundled.
+      if (SKIPPED_SKILL_DIRS.has(entry)) continue
       const skillPath = path.join(skillsDir, entry)
       let realPath: string
       try {
@@ -84,11 +121,15 @@ export function readAgentDir(dir: string): AgentDirContents {
           // the resulting catalog entry. Same blanket filter incidentally
           // keeps editor cruft (.DS_Store, .swp) out of the zip.
           if (file.startsWith(".")) continue
+          const key = prefix ? `${prefix}/${file}` : file
+          // Skip files / subdirs the storyclaw workspace validator
+          // would reject. Saves the agent a retry round-trip per
+          // offending path.
+          if (SKILL_FILE_BLACKLIST.some((re) => re.test(key))) continue
           const fullPath = path.join(dir, file)
           if (fs.statSync(fullPath).isDirectory()) {
-            readDir(fullPath, prefix ? `${prefix}/${file}` : file)
+            readDir(fullPath, key)
           } else {
-            const key = prefix ? `${prefix}/${file}` : file
             files[key] = fs.readFileSync(fullPath, "utf-8")
           }
         }

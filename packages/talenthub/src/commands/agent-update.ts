@@ -17,7 +17,20 @@ function jsonl(obj: Record<string, unknown>): void {
   process.stdout.write(`${JSON.stringify(obj)}\n`)
 }
 
-const PROMPT_FILES = ["IDENTITY.md", "USER.md", "SOUL.md", "AGENTS.md"]
+// Matches agent-zip.ts / agent-install.ts PROMPT_FILES so updates
+// refresh every brain file shipped in newer exports. IDENTITY.md is
+// listed but explicitly skipped below to preserve the user's locally
+// customised persona on each update.
+const PROMPT_FILES = [
+  "AGENTS.md",
+  "BOOTSTRAP.md",
+  "EVOLUTION.md",
+  "HEARTBEAT.md",
+  "IDENTITY.md",
+  "SOUL.md",
+  "TOOLS.md",
+  "USER.md",
+]
 const WEIGHT = { manifest: 10, downloadEnd: 50, extractEnd: 90, config: 100 }
 
 async function updateAgent(agentId: string, json: boolean): Promise<boolean> {
