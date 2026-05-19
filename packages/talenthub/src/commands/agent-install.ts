@@ -3,7 +3,7 @@ import path from "node:path"
 import JSZip from "jszip"
 import { verifyToken } from "../lib/auth.js"
 import { addOrUpdateAgent, findAgentEntry, readConfig, writeConfig } from "../lib/config.js"
-import { fetchManifest } from "../lib/registry.js"
+import { fetchManifest, fetchSharedManifest } from "../lib/registry.js"
 import { resolveWorkspaceDir } from "../lib/paths.js"
 import { markInstalled } from "../lib/state.js"
 import { scanWorkspaceSkillNames } from "../lib/skills.js"
@@ -112,10 +112,29 @@ async function downloadAndExtractZip(
   return { skillCount }
 }
 
-export async function agentInstall(name: string, options: { force?: boolean; token?: string; json?: boolean }): Promise<void> {
+export async function agentInstall(
+  name: string,
+  options: {
+    force?: boolean
+    token?: string
+    sharedToken?: string
+    json?: boolean
+  },
+): Promise<void> {
   const token = options.token
+  const sharedToken = options.sharedToken
   const json = options.json === true
   const log = json ? () => {} : console.log.bind(console)
+
+  // `--shared-token` and `--token` are mutually exclusive — the first
+  // is for share-link installs (anonymous, token-in-path), the second
+  // for authenticated private-agent installs (Bearer header). Both
+  // would hit different endpoints.
+  if (sharedToken && token) {
+    if (json) jsonl({ event: "error", message: "--shared-token and --token are mutually exclusive" })
+    else console.error("--shared-token and --token cannot be used together.")
+    process.exit(1)
+  }
 
   if (token) {
     if (!token.startsWith("th_")) {
@@ -135,9 +154,14 @@ export async function agentInstall(name: string, options: { force?: boolean; tok
 
   log(`Looking up agent "${name}"...`)
 
+  // Branch on share vs registry lookup. The share path skips
+  // verifyToken entirely (the share token isn't a `th_*` auth token)
+  // and hits the share-scoped registry endpoint instead.
   let manifest
   try {
-    manifest = await fetchManifest(name, token)
+    manifest = sharedToken
+      ? await fetchSharedManifest(sharedToken)
+      : await fetchManifest(name, token)
   } catch {
     if (json) jsonl({ event: "error", message: `Agent "${name}" not found` })
     else console.error(`Agent "${name}" not found in registry.`)

@@ -64,3 +64,27 @@ export async function fetchManifest(agentId: string, token?: string): Promise<Ag
   }
   return res.json()
 }
+
+/**
+ * Fetch a share-scoped agent manifest. Used when the CLI is invoked
+ * with `--shared-token <token>` — the token itself is the credential
+ * and the registry endpoint at `/registry/share/<token>` synthesizes
+ * the manifest from the underlying workspace_items row.
+ *
+ * No `Authorization` header is sent: the share token lives in the
+ * URL path, not in a Bearer, to match the website's existing
+ * `/api/share/.../raw` style of token-in-path access. Failure modes
+ * (revoked, expired, not-found, allowlist mismatch) all surface as
+ * 404 to avoid leaking whether a token ever existed.
+ */
+export async function fetchSharedManifest(shareToken: string): Promise<AgentManifest> {
+  const url = apiUrl(`/share/${shareToken}`)
+  const res = await fetchRetry(url, {})
+  if (!res.ok) {
+    // Include the URL in the error so misrouted hosts (e.g. CLI
+    // pointing at prod while the share lives on dev) are obvious
+    // from the failure message alone.
+    throw new Error(`Shared agent not available (${res.status}) — fetched ${url}`)
+  }
+  return res.json()
+}

@@ -2,7 +2,7 @@ import fs from "node:fs"
 import path from "node:path"
 import JSZip from "jszip"
 import { addOrUpdateAgent, readConfig, writeConfig } from "../lib/config.js"
-import { fetchManifest } from "../lib/registry.js"
+import { fetchManifest, fetchSharedManifest } from "../lib/registry.js"
 import { resolveWorkspaceDir } from "../lib/paths.js"
 import { findAgent, markInstalled, readState, writeState } from "../lib/state.js"
 import {
@@ -33,10 +33,19 @@ const PROMPT_FILES = [
 ]
 const WEIGHT = { manifest: 10, downloadEnd: 50, extractEnd: 90, config: 100 }
 
-async function updateAgent(agentId: string, json: boolean): Promise<boolean> {
+async function updateAgent(
+  agentId: string,
+  json: boolean,
+  sharedToken?: string,
+): Promise<boolean> {
   const log = json ? () => {} : console.log.bind(console)
 
-  const manifest = await fetchManifest(agentId)
+  // Share path: hit the share registry endpoint instead of by-id.
+  // Skips token verification and per-agent auth — the share token is
+  // the credential.
+  const manifest = sharedToken
+    ? await fetchSharedManifest(sharedToken)
+    : await fetchManifest(agentId)
   const wsDir = resolveWorkspaceDir(agentId)
 
   if (json) jsonl({
@@ -270,9 +279,11 @@ export async function agentUpdate(
     addSkill?: string
     removeSkill?: string
     force?: boolean
+    sharedToken?: string
   },
 ): Promise<void> {
   const json = options?.json === true
+  const sharedToken = options?.sharedToken
   const log = json ? () => {} : console.log.bind(console)
 
   // Skill-level operations on an existing agent.
@@ -296,6 +307,13 @@ export async function agentUpdate(
   }
 
   if (options?.all || !name) {
+    // `--all` walks the public registry catalog for version diffs;
+    // share-token updates only make sense per-agent.
+    if (sharedToken) {
+      if (json) jsonl({ event: "error", message: "--shared-token requires an agent name" })
+      else console.error("--shared-token cannot be combined with --all.")
+      process.exit(1)
+    }
     const updates = await checkUpdates()
     if (updates.length === 0) {
       if (json) jsonl({ event: "done", success: true, updated: 0 })
@@ -314,14 +332,21 @@ export async function agentUpdate(
     return
   }
 
-  const state = readState()
-  if (!state.agents[name]) {
-    if (json) jsonl({ event: "error", message: `Agent "${name}" is not installed` })
-    else console.error(`Agent "${name}" is not installed. Use "talenthub agent install ${name}" first.`)
-    process.exit(1)
+  // Skip the "is it in talenthub.json?" guard for share updates: the
+  // share landing already confirmed the agent is installed (via the
+  // agents.list probe), and the agent may have been installed without
+  // going through this CLI (e.g. installed elsewhere then this run
+  // is a fresh share install on top). Force-update is fine.
+  if (!sharedToken) {
+    const state = readState()
+    if (!state.agents[name]) {
+      if (json) jsonl({ event: "error", message: `Agent "${name}" is not installed` })
+      else console.error(`Agent "${name}" is not installed. Use "talenthub agent install ${name}" first.`)
+      process.exit(1)
+    }
   }
 
   log(`Updating agent "${name}"...`)
-  await updateAgent(name, json)
+  await updateAgent(name, json, sharedToken)
   log(`✓ Agent "${name}" updated. All done.`)
 }

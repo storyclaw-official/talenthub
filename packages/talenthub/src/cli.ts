@@ -52,6 +52,10 @@ agent
   .description("Install an agent and its skills")
   .option("-f, --force", "Overwrite existing agent", false)
   .option("-t, --token <token>", "Authenticate with a th_* token for private agents")
+  .option(
+    "--shared-token <token>",
+    "Install from a share link instead of the public registry",
+  )
   .option("--json", "Output structured JSONL progress for machine consumption", false)
   .action(agentInstall)
 
@@ -62,6 +66,10 @@ agent
   .option("--add-skill <zipUrl>", "Install a skill into this agent from a zip URL")
   .option("--remove-skill <skillName>", "Remove a skill from this agent")
   .option("-f, --force", "Replace existing skill with same name (used with --add-skill)", false)
+  .option(
+    "--shared-token <token>",
+    "Update from a share link instead of the public registry",
+  )
   .option("--json", "Output structured JSONL progress for machine consumption", false)
   .action(agentUpdate)
 
