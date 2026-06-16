@@ -4,6 +4,7 @@ import path from "node:path"
 import { createRequire } from "node:module"
 import JSZip from "jszip"
 import { resolveStateDir } from "./paths.js"
+import { writeAgentFile } from "./fs-util.js"
 
 /**
  * Resolve the `skills` binary shipped as a dependency rather than relying on
@@ -440,7 +441,7 @@ export async function installSkillFromZip(
     const target = path.join(targetDir, relPath)
     fs.mkdirSync(path.dirname(target), { recursive: true })
     const content = await entry.async("nodebuffer")
-    fs.writeFileSync(target, content)
+    writeAgentFile(target, content)
     extracted++
     if (fileEntries.length > 0) {
       const pct = 55 + Math.round((extracted / fileEntries.length) * 35)

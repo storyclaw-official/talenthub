@@ -4,6 +4,7 @@ import JSZip from "jszip"
 import { addOrUpdateAgent, readConfig, writeConfig } from "../lib/config.js"
 import { fetchManifest, fetchSharedManifest } from "../lib/registry.js"
 import { resolveWorkspaceDir } from "../lib/paths.js"
+import { writeAgentFile } from "../lib/fs-util.js"
 import { findAgent, markInstalled, readState, writeState } from "../lib/state.js"
 import {
   scanWorkspaceSkillNames,
@@ -86,7 +87,7 @@ async function updateAgent(
       if (filename === "IDENTITY.md") continue
       const f = zip.file(filename)
       if (f) {
-        fs.writeFileSync(path.join(wsDir, filename), await f.async("string"), "utf-8")
+        writeAgentFile(path.join(wsDir, filename), await f.async("string"))
       }
     }
 
@@ -108,7 +109,7 @@ async function updateAgent(
 
       const targetFile = path.join(skillsDir, skillName, fileName)
       fs.mkdirSync(path.dirname(targetFile), { recursive: true })
-      fs.writeFileSync(targetFile, await zipEntry.async("string"), "utf-8")
+      writeAgentFile(targetFile, await zipEntry.async("string"))
     }
 
     if (json) jsonl({ event: "progress", phase: "extract", percent: WEIGHT.extractEnd })
@@ -119,7 +120,7 @@ async function updateAgent(
     if (manifest.files) {
       for (const [filename, content] of Object.entries(manifest.files)) {
         if (content && filename !== "IDENTITY.md") {
-          fs.writeFileSync(path.join(wsDir, filename), content, "utf-8")
+          writeAgentFile(path.join(wsDir, filename), content)
         }
       }
     }
