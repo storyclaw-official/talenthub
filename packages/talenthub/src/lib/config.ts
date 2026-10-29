@@ -1,5 +1,6 @@
 import fs from "node:fs";
-import { resolveConfigPath } from "./paths.js";
+import { deleteAgentWithOpenClaw, registerAgentWithOpenClaw } from "./openclaw-cli.js";
+import { resolveConfigPath, resolveWorkspaceDir } from "./paths.js";
 
 export type AgentEntry = {
   id: string;
@@ -11,9 +12,14 @@ export type AgentEntry = {
   [key: string]: unknown;
 };
 
+/** A keyed roster entry (openclaw >= 2026.7.2): the id is the key, not a field. */
+export type KeyedAgentEntry = Omit<AgentEntry, "id">;
+
 export type OpenClawConfig = {
+  meta?: { lastTouchedVersion?: string; [key: string]: unknown };
   agents?: {
     list?: AgentEntry[];
+    entries?: Record<string, KeyedAgentEntry>;
     defaults?: Record<string, unknown>;
     [key: string]: unknown;
   };
@@ -24,6 +30,50 @@ export type OpenClawConfig = {
   };
   [key: string]: unknown;
 };
+
+/** First openclaw release with the keyed roster; it rejects any config that still has agents.list. */
+const KEYED_ROSTER_SINCE = [2026, 7, 2];
+
+function parseVersion(version: string | undefined): number[] | null {
+  const match = version?.match(/^(\d+)\.(\d+)\.(\d+)/);
+  return match ? match.slice(1, 4).map(Number) : null;
+}
+
+/**
+ * openclaw 2026.7.2 replaced `agents.list` with keyed `agents.entries` and
+ * treats a leftover `agents.list` as an invalid config (no reload, no writes).
+ * The roster is keyed when `agents.entries` exists or when the config was last
+ * written by such a version.
+ */
+export function usesKeyedRoster(cfg: OpenClawConfig): boolean {
+  const entries = cfg.agents?.entries;
+  if (entries && typeof entries === "object" && !Array.isArray(entries)) return true;
+  const version = parseVersion(cfg.meta?.lastTouchedVersion);
+  if (!version) return false;
+  for (let i = 0; i < KEYED_ROSTER_SINCE.length; i++) {
+    if (version[i] !== KEYED_ROSTER_SINCE[i]) return version[i] > KEYED_ROSTER_SINCE[i];
+  }
+  return true;
+}
+
+function findEntryKey(cfg: OpenClawConfig, agentId: string): string | undefined {
+  const id = agentId.toLowerCase();
+  return Object.keys(cfg.agents?.entries ?? {}).find((key) => key.toLowerCase() === id);
+}
+
+/**
+ * Whether adding this agent has to go through openclaw (`openclaw agents add`):
+ * on a keyed roster a new agent also needs its agent dir, auth and, for the
+ * first extra agent, the fleet ownership fields that only openclaw writes.
+ * The implicit "main" agent can be written directly.
+ */
+export function needsOpenClawRegistration(cfg: OpenClawConfig, agentId: string): boolean {
+  return (
+    usesKeyedRoster(cfg) &&
+    agentId.toLowerCase() !== "main" &&
+    findEntryKey(cfg, agentId) === undefined
+  );
+}
 
 export function readConfig(): OpenClawConfig {
   const configPath = resolveConfigPath();
@@ -48,6 +98,10 @@ export function writeConfig(cfg: OpenClawConfig): void {
 }
 
 export function findAgentEntry(cfg: OpenClawConfig, agentId: string): AgentEntry | undefined {
+  if (usesKeyedRoster(cfg)) {
+    const key = findEntryKey(cfg, agentId);
+    return key === undefined ? undefined : { ...cfg.agents?.entries?.[key], id: key };
+  }
   const id = agentId.toLowerCase();
   return cfg.agents?.list?.find((e) => e.id?.toLowerCase() === id);
 }
@@ -57,10 +111,25 @@ export function findAgentIndex(cfg: OpenClawConfig, agentId: string): number {
   return cfg.agents?.list?.findIndex((e) => e.id?.toLowerCase() === id) ?? -1;
 }
 
+/** Without `agents.list`: openclaw drops it once `agents.entries` exists, and a config that still has it is invalid. */
+function withoutList(agents: NonNullable<OpenClawConfig["agents"]>): NonNullable<OpenClawConfig["agents"]> {
+  const { list: _list, ...rest } = agents;
+  return rest;
+}
+
 export function addOrUpdateAgent(
   cfg: OpenClawConfig,
   entry: AgentEntry,
 ): OpenClawConfig {
+  if (usesKeyedRoster(cfg)) {
+    if (needsOpenClawRegistration(cfg, entry.id)) {
+      throw new Error(`Agent "${entry.id}" must be registered with "openclaw agents add" first.`);
+    }
+    const { id, ...fields } = entry;
+    const key = findEntryKey(cfg, id) ?? id;
+    const entries = { ...cfg.agents?.entries, [key]: { ...cfg.agents?.entries?.[key], ...fields } };
+    return { ...cfg, agents: { ...withoutList(cfg.agents ?? {}), entries } };
+  }
   const existingList = cfg.agents?.list ?? [];
   const list = [...existingList];
   const idx = findAgentIndex(cfg, entry.id);
@@ -82,6 +151,32 @@ export function addOrUpdateAgent(
   return { ...cfg, agents: { ...cfg.agents, list } };
 }
 
+/** Write an agent's roster entry, registering it with openclaw first when the roster requires that. */
+export function saveAgent(entry: AgentEntry): void {
+  let cfg = readConfig();
+  if (needsOpenClawRegistration(cfg, entry.id)) {
+    registerAgentWithOpenClaw(entry.id, entry.workspace ?? resolveWorkspaceDir(entry.id));
+    cfg = readConfig();
+  }
+  writeConfig(addOrUpdateAgent(cfg, entry));
+}
+
+/**
+ * Drop an agent and its bindings. On a keyed roster the entry itself is
+ * removed by openclaw (`openclaw agents delete`), which also prunes the
+ * agent's state; a direct edit cannot remove roster entries.
+ */
+export function deleteAgent(agentId: string): { removedBindings: number } {
+  const before = readConfig();
+  if (usesKeyedRoster(before) && findEntryKey(before, agentId) !== undefined) {
+    deleteAgentWithOpenClaw(agentId);
+  }
+  const cfg = readConfig();
+  const updated = removeAgent(cfg, agentId);
+  writeConfig(updated);
+  return { removedBindings: (cfg.bindings?.length ?? 0) - (updated.bindings?.length ?? 0) };
+}
+
 export function removeAgent(cfg: OpenClawConfig, agentId: string): OpenClawConfig {
   const id = agentId.toLowerCase();
   const list = (cfg.agents?.list ?? []).filter((e) => e.id?.toLowerCase() !== id);
@@ -90,7 +185,9 @@ export function removeAgent(cfg: OpenClawConfig, agentId: string): OpenClawConfi
 
   return {
     ...cfg,
-    agents: { ...cfg.agents, list: list.length > 0 ? list : undefined },
+    agents: usesKeyedRoster(cfg)
+      ? withoutList(cfg.agents ?? {})
+      : { ...cfg.agents, list: list.length > 0 ? list : undefined },
     bindings: bindings.length > 0 ? bindings : undefined,
     tools: cfg.tools
       ? {

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import readline from "node:readline";
-import { readConfig, removeAgent, writeConfig } from "../lib/config.js";
+import { deleteAgent } from "../lib/config.js";
 import { resolveWorkspaceDir } from "../lib/paths.js";
 import { markUninstalled, readState } from "../lib/state.js";
 
@@ -41,9 +41,7 @@ export async function agentUninstall(name: string, options: { yes?: boolean }): 
   }
 
   // Remove from config
-  const cfg = readConfig();
-  const { config: updatedCfg, removedBindings } = removeAgentFromConfig(cfg, name);
-  writeConfig(updatedCfg);
+  const { removedBindings } = deleteAgent(name);
 
   markUninstalled(name);
 
@@ -52,14 +50,4 @@ export async function agentUninstall(name: string, options: { yes?: boolean }): 
       (removedBindings > 0 ? ` (${removedBindings} binding(s) cleaned)` : "") +
       ".",
   );
-}
-
-function removeAgentFromConfig(cfg: ReturnType<typeof readConfig>, agentId: string) {
-  const result = removeAgent(cfg, agentId);
-  const originalBindings = cfg.bindings?.length ?? 0;
-  const newBindings = (result.bindings ?? []).length;
-  return {
-    config: result,
-    removedBindings: originalBindings - newBindings,
-  };
 }

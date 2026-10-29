@@ -1,7 +1,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import JSZip from "jszip"
-import { addOrUpdateAgent, readConfig, writeConfig } from "../lib/config.js"
+import { saveAgent } from "../lib/config.js"
 import { fetchManifest, fetchSharedManifest } from "../lib/registry.js"
 import { resolveWorkspaceDir } from "../lib/paths.js"
 import { writeAgentFile } from "../lib/fs-util.js"
@@ -128,15 +128,13 @@ async function updateAgent(
   }
 
   // Update config — replace workspace skill allowlist
-  const cfg = readConfig()
   const skills = scanWorkspaceSkillNames(wsDir)
-  const updatedCfg = addOrUpdateAgent(cfg, {
+  saveAgent({
     id: manifest.id,
     name: manifest.name,
     workspace: wsDir,
     ...(skills.length > 0 ? { skills } : {}),
   })
-  writeConfig(updatedCfg)
   markInstalled(manifest.id, manifest.version)
   if (json) jsonl({ event: "progress", phase: "config", percent: WEIGHT.config })
 
@@ -153,15 +151,13 @@ const SKILL_WEIGHT = { download: 50, extract: 90, install: 100 }
 function syncAllowlistForAgent(agentId: string): number {
   const wsDir = resolveWorkspaceDir(agentId)
   const skills = scanWorkspaceSkillNames(wsDir)
-  const cfg = readConfig()
-  // Preserve existing agent metadata — addOrUpdateAgent spreads the entry into
+  // Preserve existing agent metadata — saveAgent spreads the entry into
   // the existing one, so we only need to supply id + the skills we want to write.
-  const updated = addOrUpdateAgent(cfg, {
+  saveAgent({
     id: agentId,
     workspace: wsDir,
     skills,
   })
-  writeConfig(updated)
   return skills.length
 }
 
@@ -209,7 +205,7 @@ async function agentAddSkill(
       writeState(state)
     }
 
-    // Sync openclaw allowlist (scan workspace + write config.agents.list[].skills)
+    // Sync openclaw allowlist (scan workspace + write the agent's roster skills)
     syncAllowlistForAgent(agentId)
     if (json) jsonl({ event: "progress", phase: "install", percent: SKILL_WEIGHT.install })
 
