@@ -2,7 +2,7 @@ import fs from "node:fs"
 import path from "node:path"
 import JSZip from "jszip"
 import { verifyToken } from "../lib/auth.js"
-import { addOrUpdateAgent, findAgentEntry, readConfig, writeConfig } from "../lib/config.js"
+import { findAgentEntry, readConfig, saveAgent } from "../lib/config.js"
 import { fetchManifest, fetchSharedManifest } from "../lib/registry.js"
 import { resolveWorkspaceDir } from "../lib/paths.js"
 import { writeAgentFile } from "../lib/fs-util.js"
@@ -176,8 +176,7 @@ export async function agentInstall(
   })
   if (json) jsonl({ event: "progress", phase: "manifest", percent: WEIGHT.manifest })
 
-  const cfg = readConfig()
-  const existing = findAgentEntry(cfg, name)
+  const existing = findAgentEntry(readConfig(), name)
   if (existing && !options.force) {
     if (json) jsonl({ event: "error", message: `Agent "${name}" already exists. Use --force.` })
     else console.error(`Agent "${name}" already exists in config. Use --force to overwrite.`)
@@ -208,13 +207,12 @@ export async function agentInstall(
 
   // Update config — include workspace skill names as the agent's allowlist
   const skills = scanWorkspaceSkillNames(wsDir)
-  const updatedCfg = addOrUpdateAgent(cfg, {
+  saveAgent({
     id: manifest.id,
     name: manifest.name,
     workspace: wsDir,
     ...(skills.length > 0 ? { skills } : {}),
   })
-  writeConfig(updatedCfg)
   markInstalled(manifest.id, manifest.version)
   if (json) jsonl({ event: "progress", phase: "config", percent: WEIGHT.config })
 
